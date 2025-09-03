@@ -20,6 +20,7 @@ using Printf
 export auto_vectorize, branchless_max, cache_friendly_transpose
 export parallel_reduce, cpu_benchmark
 export CPUProfiler, profile_function
+export optimized_matrix_multiply
 
 # =============================================================================
 # VECTORIZAÇÃO OTIMIZADA
@@ -269,6 +270,56 @@ function prefetch_optimized_sum(data::AbstractVector{T}) where {T<:Number}
     return sum_val
 end
 
+"""
+    optimized_matrix_multiply(A::Matrix{T}, B::Matrix{T}) where T
+
+Multiplicação de matrizes otimizada com blocking e prefetch
+Implementa técnicas de otimização de cache para melhor desempenho
+
+# Eficiência de Código
+- Utiliza @inbounds para evitar verificações de limites
+- Usa blocking para melhor localidade de cache
+- Aplica @simd para vetorização automática
+- Implementa @fastmath para operações matemáticas otimizadas
+"""
+function optimized_matrix_multiply(A::Matrix{T}, B::Matrix{T}) where {T}
+    m, k = size(A)
+    k2, n = size(B)
+    k == k2 || throw(DimensionMismatch("Matrices A and B are not compatible for multiplication"))
+
+    # Initialize result matrix
+    C = zeros(T, m, n)
+
+    # Optimal block size based on cache line size and matrix dimensions
+    block_size = min(64, min(m, n, k))
+
+    # Register blocking for better cache utilization
+    @inbounds for jj in 1:block_size:n
+        j_end = min(jj + block_size - 1, n)
+
+        for kk in 1:block_size:k
+            k_end = min(kk + block_size - 1, k)
+
+            for ii in 1:block_size:m
+                i_end = min(ii + block_size - 1, m)
+
+                # Multiply block with loop unrolling
+                for j in jj:j_end
+                    @simd for i in ii:i_end
+                        temp = zero(T)
+                        @fastmath for k_idx in kk:k_end
+                            temp += A[i, k_idx] * B[k_idx, j]
+                        end
+                        C[i, j] += temp
+                    end
+                end
+            end
+        end
+    end
+
+    return C
+end
+
 # =============================================================================
 # THREADING PATTERNS AVANÇADOS
 # =============================================================================
@@ -366,6 +417,71 @@ function work_stealing_parallel_for(f::Function, range::UnitRange{Int})
             f(i)
         end
     end
+end
+
+"""
+    memory_efficient_parallel_reduce(data::AbstractVector{T}, op::Function, init::T) where T
+
+Redução paralela com gerenciamento eficiente de memória
+Implementa redução em árvore para minimizar alocações
+
+# Eficiência de Código
+- Utiliza @inbounds para evitar verificações de limites
+- Usa @simd para vetorização automática
+- Implementa Threads.@threads para paralelismo
+- Aplica alocação eficiente com Vector{T}(undef, n)
+- Usa redução em árvore para minimizar alocações
+"""
+function memory_efficient_parallel_reduce(data::AbstractVector{T}, op::Function, init::T) where {T}
+    n = length(data)
+    n_threads = Threads.nthreads()
+
+    # Sequential for small data or single thread
+    if n < 1000 || n_threads == 1
+        result = init
+        @inbounds @simd for i in eachindex(data)  # @inbounds for efficiency
+            result = op(result, data[i])
+        end
+        return result
+    end
+
+    # Calculate chunk size for better load balancing
+    chunk_size = max(1, n ÷ (n_threads * 4))
+
+    # Use a more efficient approach with tree reduction
+    # Pre-allocate partial results vector with exact size needed
+    n_chunks = cld(n, chunk_size)
+    partial_results = Vector{T}(undef, n_chunks)  # Efficient allocation
+
+    # Parallel reduction of chunks
+    Threads.@threads for chunk_id in 1:n_chunks  # Parallel execution
+        start_idx = (chunk_id - 1) * chunk_size + 1
+        end_idx = min(chunk_id * chunk_size, n)
+
+        local_result = init
+        @inbounds @simd for i in start_idx:end_idx  # @inbounds and @simd for efficiency
+            local_result = op(local_result, data[i])
+        end
+        partial_results[chunk_id] = local_result
+    end
+
+    # Final tree reduction of partial results
+    while length(partial_results) > 1
+        new_length = cld(length(partial_results), 2)
+        new_results = Vector{T}(undef, new_length)  # Efficient allocation
+
+        @inbounds for i in 1:new_length  # @inbounds for efficiency
+            if 2 * i <= length(partial_results)
+                new_results[i] = op(partial_results[2*i-1], partial_results[2*i])
+            else
+                new_results[i] = partial_results[2*i-1]
+            end
+        end
+
+        partial_results = new_results
+    end
+
+    return partial_results[1]
 end
 
 # =============================================================================

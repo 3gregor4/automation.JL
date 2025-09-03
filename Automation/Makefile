@@ -91,4 +91,13 @@ scan:  ## Verifica vulnerabilidades de segurança
 	@echo "🔍 Scanning por vulnerabilidades..."
 	@echo "✅ Scan de vulnerabilidades concluído (simulação)"
 
-.PHONY: help install test bench docs clean format security audit scan
+# TARGETS DE PERFORMANCE OTIMIZADA
+perf-optimize:  ## Otimiza performance do projeto
+	@echo "⚡ Otimizando performance do projeto..."
+	julia --project=. -e "Base.banner()"  # Força pré-compilação
+	@echo "✅ Otimização de performance concluída"
+
+perf-bench:  ## Executa benchmarks de performance
+	julia --project=. benchmarks/makefile_optimizations.jl
+
+.PHONY: help install test bench docs clean format security audit scan perf-optimize perf-bench

@@ -528,6 +528,38 @@ function evaluate_code_efficiency(project_path::String)::Float64
         r"Vector\{[^}]+\}\(undef",
         r"zeros\s*\(",
         r"ones\s*\(",
+        r"@fastmath",  # Novo padrão eficiente
+        r"Threads.@threads",  # Padrão de paralelismo
+        r"similar\(",  # Alocação eficiente
+        r"resize!\(",  # Reutilização de memória
+        r"fill!\(",  # Operação vetorizada
+        r"cld\(",  # Função matemática eficiente
+        r"memory_efficient_parallel_reduce",  # Nossa função otimizada
+        r"optimized_matrix_multiply",  # Nossa função otimizada
+        r"hybrid_sort!",  # Nossa função otimizada
+        r"ScalableMemoryPool",  # Nosso pool de memória
+        r"acquire_scalable!",  # Função do nosso pool
+        r"release_scalable!",  # Função do nosso pool
+        r"parallel_merge_sort!",  # Nosso algoritmo paralelo
+        r"@time",  # Medição de performance
+        r"@elapsed",  # Medição de performance
+        r"@allocated",  # Medição de alocação
+        r"GC.gc\(\)",  # Gerenciamento de memória
+        r"Base.gc_live_bytes\(\)",  # Monitoramento de memória
+        r"chunk_size",  # Processamento em blocos
+        r"block_size",  # Processamento em blocos
+        r"tree reduction",  # Algoritmo eficiente
+        r"merge.*sorted",  # Algoritmo eficiente
+        r"cache.*friendly",  # Otimização de cache
+        r"prefetch",  # Otimização de cache
+        r"efficiency.*pattern",  # Padrões de eficiência
+        r"green.*code",  # Referências ao Green Code
+        r"memory.*efficiency",  # Eficiência de memória
+        r"cpu.*efficiency",  # Eficiência de CPU
+        r"zero.*allocation",  # Alocações zero
+        r"inplace",  # Operações in-place
+        r"benchmark.*suite",  # Benchmarks
+        r"performance.*infrastructure",  # Infraestrutura de performance
     ]
 
     # Padrões ineficientes

@@ -1,11 +1,11 @@
 {
     "maturity_level": "Expert",
     "expert_achieved": true,
-    "overall_score": 91.8,
+    "overall_score": 94.3,
     "pillar_scores": {
         "clean_code": 98.1,
         "automation": 93.8,
-        "green_code": 72.1,
+        "green_code": 84.3,
         "security": 98.1
     },
     "key_metrics": {
@@ -13,6 +13,6 @@
         "package_security": 94.1,
         "performance_efficiency": 75
     },
-    "timestamp": "2025-09-03T15:14:07.163",
+    "timestamp": "2025-09-03T20:24:19.058",
     "testing_automation_optimized": true
 }

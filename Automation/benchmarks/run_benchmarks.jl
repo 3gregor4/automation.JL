@@ -43,11 +43,11 @@ Suite principal de benchmarks para sistema CSGA
 """
 struct BenchmarkSuite
     name::String
-    benchmarks::Dict{String, Any}
-    results::Dict{String, Any}
+    benchmarks::Dict{String,Any}
+    results::Dict{String,Any}
 
     function BenchmarkSuite(name::String)
-        new(name, Dict{String, Any}(), Dict{String, Any}())
+        new(name, Dict{String,Any}(), Dict{String,Any}())
     end
 end
 
@@ -123,7 +123,7 @@ function create_core_benchmarks()
         suite,
         "string_processing",
         () -> begin
-            text = "Julia Performance Benchmarking " ^ 100
+            text = "Julia Performance Benchmarking "^100
             split(uppercase(text), " ")
         end,
     )
@@ -167,12 +167,18 @@ function run_all_benchmarks()
         ("memory_profiling.jl", "Memory Profiling"),
         ("efficiency_patterns.jl", "Efficiency Patterns"),
         ("regression_check.jl", "Regression Check"),
+        ("green_code_optimizations.jl", "Green Code Optimizations"),  # New benchmark
+        ("makefile_integration.jl", "Makefile Integration"),  # Additional benchmark
     ]
 
     for (file, desc) in additional_benchmarks
         println("\n🔧 Executando $desc...")
         try
             include(file)
+            if file == "green_code_optimizations.jl"
+                # Run the specific benchmark function
+                benchmark_green_code_optimizations()
+            end
             println("✅ $desc concluído")
         catch e
             println("⚠️  Erro em $desc: $e")
@@ -255,7 +261,7 @@ function generate_summary(suites)
         println("$(suite.name): $suite_success/$suite_total sucessos")
     end
 
-    success_rate = round(successful_benchmarks / total_benchmarks * 100, digits = 1)
+    success_rate = round(successful_benchmarks / total_benchmarks * 100, digits=1)
     println("\nTaxa de sucesso geral: $success_rate%")
     println("Timestamp: $(now())")
 end

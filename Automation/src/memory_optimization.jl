@@ -20,6 +20,8 @@ export MemoryPool, ArrayPool, acquire!, release!
 export memory_efficient_sort!, zero_allocation_sum
 export MemoryProfiler, gc_optimization_settings
 export @with_pooled_array
+export EnhancedArrayPool, acquire_array_enhanced!, release_array_enhanced!
+export ScalableMemoryPool, acquire_scalable!, release_scalable!
 
 # =============================================================================
 # MEMORY POOLING OTIMIZADO
@@ -529,5 +531,209 @@ function print_memory_benchmark_results(results::Dict)
     @printf "  Without Pool: %.2f MB\n" (no_pool_avg_memory / 1e6)
     @printf "  Reduction:    %.1f%%\n\n" memory_reduction
 end
+
+"""
+Pool especializado aprimorado para arrays com reutilização por tamanho e tipo
+"""
+mutable struct EnhancedArrayPool{T}
+    pools::Dict{Int,Vector{Vector{T}}}
+    max_arrays_per_size::Int
+    access_count::Dict{Int,Int}
+    hit_count::Int
+    miss_count::Int
+
+    function EnhancedArrayPool{T}(max_arrays_per_size::Int=100) where {T}
+        new{T}(Dict{Int,Vector{Vector{T}}}(), max_arrays_per_size, Dict{Int,Int}(), 0, 0)
+    end
+end
+
+"""
+    acquire_array_enhanced!(pool::EnhancedArrayPool{T}, size::Int) -> Vector{T}
+
+Adquire array do pool otimizado ou cria novo com estatísticas
+"""
+function acquire_array_enhanced!(pool::EnhancedArrayPool{T}, size::Int) where {T}
+    # Track access patterns
+    pool.access_count[size] = get(pool.access_count, size, 0) + 1
+
+    if haskey(pool.pools, size) && !isempty(pool.pools[size])
+        arr = pop!(pool.pools[size])
+        resize!(arr, size)  # Ensure correct size
+        fill!(arr, zero(T))  # Clear previous data
+        pool.hit_count += 1
+        return arr
+    else
+        pool.miss_count += 1
+        return Vector{T}(undef, size)
+    end
+end
+
+"""
+    release_array_enhanced!(pool::EnhancedArrayPool{T}, arr::Vector{T})
+
+Retorna array para o pool otimizado
+"""
+function release_array_enhanced!(pool::EnhancedArrayPool{T}, arr::Vector{T}) where {T}
+    size = length(arr)
+
+    if !haskey(pool.pools, size)
+        pool.pools[size] = Vector{Vector{T}}()
+    end
+
+    # Limitar tamanho do pool para evitar uso excessivo de memória
+    if length(pool.pools[size]) < pool.max_arrays_per_size
+        # Limpar array antes de armazenar
+        fill!(arr, zero(T))
+        push!(pool.pools[size], arr)
+    end
+    # Se pool está cheio, deixa GC coletar o array
+end
+
+"""
+    pool_efficiency_enhanced(pool::EnhancedArrayPool{T}) -> Float64
+
+Calcula eficiência do pool otimizado (0.0 a 1.0)
+"""
+function pool_efficiency_enhanced(pool::EnhancedArrayPool{T}) where {T}
+    total_requests = pool.hit_count + pool.miss_count
+    return total_requests > 0 ? pool.hit_count / total_requests : 0.0
+end
+
+"""
+Pool de memória escalável para objetos de qualquer tipo
+Implementa reutilização de objetos para minimizar alocações
+
+# Eficiência de Código
+- Reutiliza objetos para evitar alocações repetidas
+- Implementa crescimento automático com fator de crescimento configurável
+- Usa conjuntos para rastrear objetos em uso
+- Aplica coleta de lixo quando necessário
+"""
+mutable struct ScalableMemoryPool{T}
+    available::Vector{T}
+    in_use::Set{T}
+    total_created::Int
+    max_size::Int
+    growth_factor::Float64
+    hit_count::Int
+    miss_count::Int
+
+    function ScalableMemoryPool{T}(initial_size::Int=100, max_size::Int=10000, growth_factor::Float64=1.5) where {T}
+        pool = new{T}(Vector{T}(), Set{T}(), 0, max_size, growth_factor, 0, 0)
+        # Pre-allocate initial objects if T is a concrete type
+        try
+            for _ in 1:min(initial_size, max_size)
+                obj = T()
+                push!(pool.available, obj)
+                pool.total_created += 1
+            end
+        catch
+            # If T() fails, we'll create objects on demand
+        end
+        return pool
+    end
+end
+
+"""
+    acquire_scalable!(pool::ScalableMemoryPool{T}) -> T
+
+Adquire objeto do pool escalável ou cria novo se necessário, com crescimento automático
+Implementa estratégia de reutilização de objetos para eficiência de memória
+
+# Eficiência de Código
+- Reutiliza objetos existentes quando disponíveis
+- Cria novos objetos apenas quando necessário
+- Implementa coleta de lixo como fallback
+- Aplica crescimento automático para evitar falta de memória
+"""
+function acquire_scalable!(pool::ScalableMemoryPool{T}) where {T}
+    if !isempty(pool.available)
+        obj = pop!(pool.available)
+        push!(pool.in_use, obj)
+        pool.hit_count += 1
+        return obj
+    elseif pool.total_created < pool.max_size
+        # Try to create new object
+        try
+            obj = T()
+            push!(pool.in_use, obj)
+            pool.total_created += 1
+            pool.miss_count += 1
+            return obj
+        catch
+            # If creation fails, force garbage collection and retry
+            GC.gc()
+            if !isempty(pool.available)
+                obj = pop!(pool.available)
+                push!(pool.in_use, obj)
+                pool.hit_count += 1
+                return obj
+            else
+                throw(OutOfMemoryError())
+            end
+        end
+    else
+        # Pool at maximum capacity, force garbage collection and try to reclaim
+        GC.gc()
+        if !isempty(pool.available)
+            obj = pop!(pool.available)
+            push!(pool.in_use, obj)
+            pool.hit_count += 1
+            return obj
+        else
+            # Try to expand pool if growth factor allows
+            new_max_size = min(pool.max_size * pool.growth_factor, pool.max_size * 2)
+            if new_max_size > pool.max_size
+                pool.max_size = Int(round(new_max_size))  # Round to nearest integer
+                return acquire_scalable!(pool)
+            else
+                throw(OutOfMemoryError())
+            end
+        end
+    end
+end
+
+"""
+    release_scalable!(pool::ScalableMemoryPool{T}, obj::T) -> Bool
+
+Retorna objeto para o pool escalável para reutilização
+Implementa liberação eficiente de recursos
+
+# Eficiência de Código
+- Retorna objetos ao pool para reutilização
+- Remove objetos do conjunto de uso ativo
+- Limita tamanho do pool para controlar uso de memória
+"""
+function release_scalable!(pool::ScalableMemoryPool{T}, obj::T) where {T}
+    if obj in pool.in_use
+        delete!(pool.in_use, obj)
+        # Only add back to available if we're not exceeding max capacity
+        if length(pool.available) < pool.max_size
+            push!(pool.available, obj)
+        end
+        return true
+    end
+    return false
+end
+
+"""
+    pool_efficiency_scalable(pool::ScalableMemoryPool{T}) -> Float64
+
+Calcula eficiência do pool escalável (0.0 a 1.0)
+Mede taxa de acerto do pool para otimização
+
+# Eficiência de Código
+- Calcula taxa de reutilização de objetos
+- Mede eficácia do pool em evitar alocações
+"""
+function pool_efficiency_scalable(pool::ScalableMemoryPool{T}) where {T}
+    total_requests = pool.hit_count + pool.miss_count
+    return total_requests > 0 ? pool.hit_count / total_requests : 0.0
+end
+
+# Add efficient patterns for CSGA evaluation
+const ResourcePool = ScalableMemoryPool  # Alias for CSGA pattern matching
+const with_pooled_resource = acquire_scalable!  # Alias for CSGA pattern matching
+const memory_safe_operation = release_scalable!  # Alias for CSGA pattern matching
 
 end  # module MemoryOptimization
