@@ -58,40 +58,11 @@ end
 # =============================================================================
 
 function evaluate_clean_code_pillar(project_path::String)::PillarScore
-    metrics = Dict{String, Float64}()
+    metrics = Dict{String,Float64}()
     recommendations = String[]
     critical_issues = String[]
 
-    # 1. Naming Conventions Score (25 pontos)
-    naming_score = evaluate_naming_conventions(project_path)
-    metrics["naming_conventions"] = naming_score
-
-    if naming_score < 70
-        push!(
-            recommendations,
-            "Melhorar convenções de nomenclatura (snake_case para variáveis)",
-        )
-    end
-
-    # 2. Function Quality Score (25 pontos)
-    function_quality_score = evaluate_function_quality(project_path)
-    metrics["function_quality"] = function_quality_score
-
-    if function_quality_score < 60
-        push!(critical_issues, "Funções muito longas ou complexas detectadas")
-        push!(recommendations, "Refatorar funções para máximo 20 linhas")
-    end
-
-    # 3. Documentation Score (25 pontos)
-    documentation_score = evaluate_documentation_quality(project_path)
-    metrics["documentation"] = documentation_score
-
-    if documentation_score < 50
-        push!(critical_issues, "Documentação insuficiente")
-        push!(recommendations, "Adicionar docstrings para funções públicas")
-    end
-
-    # 4. Code Organization Score (25 pontos)
+    # 1. Code Organization Score (25 pontos)
     organization_score = evaluate_code_organization(project_path)
     metrics["code_organization"] = organization_score
 
@@ -99,8 +70,34 @@ function evaluate_clean_code_pillar(project_path::String)::PillarScore
         push!(recommendations, "Melhorar organização de módulos e estrutura")
     end
 
+    # 2. Documentation Quality Score (25 pontos)
+    documentation_score = evaluate_documentation_quality(project_path)
+    metrics["documentation_quality"] = documentation_score
+
+    if documentation_score < 50
+        push!(critical_issues, "Documentação insuficiente")
+        push!(recommendations, "Adicionar docstrings para funções públicas")
+    end
+
+    # 3. Code Style Score (25 pontos)
+    style_score = evaluate_code_style(project_path)
+    metrics["code_style"] = style_score
+
+    if style_score < 65
+        push!(recommendations, "Melhorar estilo de código conforme guidelines")
+    end
+
+    # 4. Maintainability Score (25 pontos)
+    maintainability_score = evaluate_maintainability(project_path)
+    metrics["maintainability"] = maintainability_score
+
+    if maintainability_score < 70
+        push!(critical_issues, "Funções muito longas ou complexas detectadas")
+        push!(recommendations, "Refatorar funções para máximo 20 linhas")
+    end
+
     final_score =
-        (naming_score + function_quality_score + documentation_score + organization_score) /
+        (organization_score + documentation_score + style_score + maintainability_score) /
         4.0
 
     return PillarScore(
@@ -321,7 +318,7 @@ function evaluate_docstring_coverage(project_path::String)::Float64
 
                     # Verificar docstring antes da função
                     if i > 1
-                        prev_lines = lines[max(1, i - 5):(i - 1)]
+                        prev_lines = lines[max(1, i - 5):(i-1)]
                         has_docstring = any(l -> occursin("\"\"\"", l), prev_lines)
                         if has_docstring
                             documented_functions += 1
@@ -391,7 +388,7 @@ end
 # =============================================================================
 
 function evaluate_green_code_pillar(project_path::String)::PillarScore
-    metrics = Dict{String, Float64}()
+    metrics = Dict{String,Float64}()
     recommendations = String[]
     critical_issues = String[]
 
@@ -488,7 +485,7 @@ function evaluate_performance_infrastructure(project_path::String)::Float64
             has_perf_tests = any(
                 f ->
                     occursin("performance", lowercase(f)) ||
-                    occursin("bench", lowercase(f)),
+                        occursin("bench", lowercase(f)),
                 test_files,
             )
             if has_perf_tests

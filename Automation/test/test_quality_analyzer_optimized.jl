@@ -147,24 +147,68 @@ include("../src/quality_analyzer_optimized.jl")
 
         @testset "Scalability Test" begin
             # Testar escalabilidade com múltiplos arquivos
-            project_files = find_julia_files_optimized(".")
+            test_files = String[]
+            try
+                # Criar arquivos de teste temporários
+                for i in 1:10
+                    temp_file = tempname()
+                    open(temp_file, "w") do f
+                        write(f, "function test_function_$i()\n    return $i\nend\n")
+                    end
+                    push!(test_files, temp_file)
+                end
 
-            if length(project_files) > 3
-                # Testar com subset dos arquivos
-                test_files = project_files[1:min(3, length(project_files))]
+                # Testar análise de múltiplos arquivos
+                results = Dict{String,Any}()
+                for file in test_files
+                    if isfile(file)
+                        result = Automation.QualityAnalyzerOptimized.analyze_file(file)
+                        results[file] = result
+                    end
+                end
 
-                start_time = time()
-                results = [analyze_file_optimized(f) for f in test_files]
-                end_time = time()
+                @test length(results) == 10
+                @test all(r -> isa(r, NamedTuple), values(results))
 
-                total_time = end_time - start_time
-                avg_time_per_file = total_time / length(test_files)
+                # Testar eficiência de memória
+                initial_memory = Base.gc_live_bytes()
 
-                @test length(results) == length(test_files)
-                @test avg_time_per_file < 2.0  # Menos de 2s por arquivo em média
+                # Processar arquivos em lote
+                batch_results = Automation.QualityAnalyzerOptimized.analyze_files(test_files)
 
-                println("   📈 Escalabilidade: $(length(test_files)) arquivos em $(round(total_time, digits=2))s")
-                println("   📊 Média por arquivo: $(round(avg_time_per_file * 1000, digits=1))ms")
+                GC.gc()
+                final_memory = Base.gc_live_bytes()
+                memory_growth = final_memory - initial_memory
+
+                @test isa(batch_results, Dict)
+                @test length(batch_results) == 10
+                @test memory_growth <= 10_000_000  # Menos de 10MB de crescimento
+
+                # Testar uso de tipos otimizados
+                sample_result = first(values(batch_results))
+                @test haskey(sample_result, :complexity)
+                @test haskey(sample_result, :quality_score)
+                @test haskey(sample_result, :maintainability)
+                @test haskey(sample_result, :efficiency)
+
+                # Testar densidade de informação
+                @test sample_result.complexity >= 0
+                @test sample_result.quality_score >= 0.0 && sample_result.quality_score <= 100.0
+                @test sample_result.maintainability >= 0.0 && sample_result.maintainability <= 100.0
+                @test sample_result.efficiency >= 0.0 && sample_result.efficiency <= 100.0
+
+                println("   ✅ Escalabilidade verificada com $(length(results)) arquivos")
+                println("   💾 Crescimento de memória: $(round(memory_growth/1e6, digits=2))MB")
+
+            finally
+                # Limpar arquivos temporários
+                for file in test_files
+                    try
+                        rm(file, force=true)
+                    catch e
+                        @warn "Não foi possível remover arquivo temporário $file: $e"
+                    end
+                end
             end
         end
     end

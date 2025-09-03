@@ -1,5 +1,5 @@
 """
-Test Green Code Pillar - Pilar 3: Green Code (20%)
+Teste do Pilar Green Code - Pilar 3: Código Verde (20%)
 Testes específicos para validação do pilar de código verde CSGA
 
 Objetivos:
@@ -13,8 +13,8 @@ using Test
 using BenchmarkTools
 using Statistics
 
-@testset "🌱 Green Code Pillar Validation" begin
-    println("\n🌱 Testando Green Code Pillar...")
+@testset "🌱 Validação do Pilar Código Verde" begin
+    println("\n🌱 Avaliando Pilar Código Verde...")
 
     # ==========================================================================
     # TESTE 1: PERFORMANCE INFRASTRUCTURE SCORE (40 pontos)
@@ -35,7 +35,9 @@ using Statistics
         end
 
         @testset "Performance Efficiency Score Calculation" begin
-            score = Automation.CSGAScoring.evaluate_performance_infrastructure(".")
+            # Usar o diretório do projeto principal (um nível acima do diretório test)
+            project_path = dirname(pwd())
+            score = Automation.CSGAScoring.evaluate_performance_infrastructure(project_path)
             @test score >= 70.0
             @test score <= 100.0
 
@@ -66,8 +68,8 @@ using Statistics
             efficient_time = median(efficient_result.times)
             inefficient_time = median(inefficient_result.times)
 
-            @test efficient_time > 0 "Algoritmo eficiente deve executar"
-            @test inefficient_time > 0 "Algoritmo ineficiente deve executar"
+            @test efficient_time > 0
+            @test inefficient_time > 0
 
             println("   ⏱️  Algoritmo eficiente: $(round(efficient_time/1e6, digits=2))ms")
             println(
@@ -76,9 +78,17 @@ using Statistics
         end
 
         @testset "Code Efficiency Score Calculation" begin
-            score = Automation.CSGAScoring.evaluate_code_efficiency(".")
-            @test score >= 60.0 "Code efficiency score deve ser ≥ 60.0"
-            @test score <= 100.0 "Code efficiency score deve ser ≤ 100.0"
+            # Usar o diretório do projeto principal (um nível acima do diretório test)
+            current_dir = pwd()
+            project_path = current_dir
+            # Se estivermos no diretório test, subir um nível
+            if basename(current_dir) == "test"
+                project_path = dirname(current_dir)
+            end
+
+            score = Automation.CSGAScoring.evaluate_code_efficiency(project_path)
+            @test score >= 60.0
+            @test score <= 100.0
 
             println("   ✅ Code Efficiency Score: $(round(score, digits=1))/100")
         end
@@ -102,7 +112,7 @@ using Statistics
             final_memory = Base.gc_live_bytes()
 
             memory_growth = final_memory - initial_memory
-            @test memory_growth <= 50_000_000 "Crescimento de memória deve ser controlado"
+            @test memory_growth <= 50_000_000
 
             println("   💾 Crescimento de memória: $(round(memory_growth/1e6, digits=2))MB")
         end
@@ -120,15 +130,23 @@ using Statistics
             result = @benchmark $test_function(10000)
             allocations = result.allocs
 
-            @test allocations <= 20 "Função otimizada deve fazer poucas alocações"
+            @test allocations <= 20
 
             println("   🔧 Alocações: $allocations")
         end
 
         @testset "Resource Management Score Calculation" begin
-            score = Automation.CSGAScoring.evaluate_resource_management(".")
-            @test score >= 65.0 "Resource management score deve ser ≥ 65.0"
-            @test score <= 100.0 "Resource management score deve ser ≤ 100.0"
+            # Usar o diretório do projeto principal (um nível acima do diretório test)
+            current_dir = pwd()
+            project_path = current_dir
+            # Se estivermos no diretório test, subir um nível
+            if basename(current_dir) == "test"
+                project_path = dirname(current_dir)
+            end
+
+            score = Automation.CSGAScoring.evaluate_resource_management(project_path)
+            @test score >= 65.0
+            @test score <= 100.0
 
             println("   ✅ Resource Management Score: $(round(score, digits=1))/100")
         end
@@ -140,12 +158,20 @@ using Statistics
     @testset "🎯 Green Code Pillar Integration Test" begin
 
         # Avaliação completa do pilar
-        green_code_pillar = Automation.CSGAScoring.evaluate_green_code_pillar(".")
+        # Usar o diretório do projeto principal (um nível acima do diretório test)
+        current_dir = pwd()
+        project_path = current_dir
+        # Se estivermos no diretório test, subir um nível
+        if basename(current_dir) == "test"
+            project_path = dirname(current_dir)
+        end
+
+        green_code_pillar = Automation.CSGAScoring.evaluate_green_code_pillar(project_path)
 
         @test green_code_pillar.name == "Green Code"
-        @test green_code_pillar.weight == 0.20 "Peso do pilar Green Code deve ser 20%"
-        @test green_code_pillar.score >= 60.0 "Score total do pilar Green Code deve ser ≥ 60.0"
-        @test green_code_pillar.score <= 100.0 "Score total do pilar Green Code deve ser ≤ 100.0"
+        @test green_code_pillar.weight == 0.20
+        @test green_code_pillar.score >= 60.0
+        @test green_code_pillar.score <= 100.0
 
         # Verificação das métricas componentes
         @test haskey(green_code_pillar.metrics, "performance_infrastructure")

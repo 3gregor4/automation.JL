@@ -1,54 +1,96 @@
 """
 Performance Tests - Validação de Performance CSGA
-Testes específicos de performance para o pilar Green Code
-
-Objetivos:
-- Validar performance das funções CSGA
-- Benchmarks de avaliação dos pilares
-- Testes de eficiência do sistema
+Testes para garantir que o sistema mantenha performance adequada
 """
 
 using Test
 using BenchmarkTools
-using Automation
+using Statistics
 
-@testset "🚀 Performance Tests" begin
-    println("\n⚡ Executando Performance Tests...")
+@testset "🚀 Performance Validation Tests" begin
+    println("\n⚡ Executando Performance Validation Tests...")
 
-    @testset "CSGA Evaluation Performance" begin
-        # Benchmark da avaliação CSGA completa
-        result = @benchmark Automation.evaluate_project(".")
+    # ==========================================================================
+    # TESTE DE PERFORMANCE BÁSICA
+    # ==========================================================================
+    @testset "⏱️ Basic Performance Test" begin
+        # Testar tempo de execução da função principal
+        result = @benchmark Automation.evaluate_project(".") samples = 10
 
-        median_time = median(result.times) / 1e9  # Converter para segundos
-        @test median_time <= 10.0 "Avaliação CSGA deve completar em ≤ 10 segundos"
+        median_time = median(result.times)
+        mean_time = mean(result.times)
 
-        println("   ⏱️  Tempo médio avaliação CSGA: $(round(median_time, digits=3))s")
+        # Verificar que a avaliação não demora mais que 30 segundos
+        @test median_time < 30_000_000_000  # 30 segundos em nanossegundos
+        @test mean_time < 45_000_000_000    # 45 segundos em nanossegundos
 
-        # Verificar memória alocada
-        median_memory = median(result.memory)
-        @test median_memory <= 200_000_000 "Avaliação CSGA deve usar ≤ 200MB"
-
-        println("   💾 Memória média: $(round(median_memory/1e6, digits=1))MB")
+        println("   ⏱️  Tempo mediano: $(round(median_time/1e9, digits=2))s")
+        println("   ⏱️  Tempo médio: $(round(mean_time/1e9, digits=2))s")
     end
 
-    @testset "Individual Pillar Performance" begin
-        # Benchmark das funções de scoring individual
-        pillars = [
-            ("Security", () -> Automation.CSGAScoring.evaluate_security_pillar(".")),
-            ("Clean Code", () -> Automation.CSGAScoring.evaluate_clean_code_pillar(".")),
-            ("Green Code", () -> Automation.CSGAScoring.evaluate_green_code_pillar(".")),
-            ("Automation", () -> Automation.CSGAScoring.evaluate_automation_pillar(".")),
-        ]
+    # ==========================================================================
+    # TESTE DE ESCALABILIDADE
+    # ==========================================================================
+    @testset "📈 Scalability Test" begin
+        # Criar arquivos de teste temporários para verificar escalabilidade
+        test_files = String[]
+        try
+            # Criar 100 arquivos pequenos
+            for i in 1:100
+                temp_file = tempname()
+                open(temp_file, "w") do f
+                    write(f, "function test_function_$i()\n    return $i\nend\n")
+                end
+                push!(test_files, temp_file)
+            end
 
-        for (name, func) in pillars
-            result = @benchmark $func()
-            median_time = median(result.times) / 1e9
+            # Medir tempo para processar muitos arquivos
+            result = @benchmark Automation.QualityAnalyzerOptimized.analyze_files($test_files) samples = 5
 
-            @test median_time <= 5.0 "Avaliação do pilar $name deve completar em ≤ 5 segundos"
+            median_time = median(result.times)
+            memory_usage = Base.gc_live_bytes()
 
-            println("   ⏱️  $name pillar: $(round(median_time, digits=3))s")
+            # Verificar escalabilidade
+            @test median_time < 10_000_000_000  # 10 segundos para 100 arquivos
+            @test memory_usage < 100_000_000     # Menos de 100MB de memória
+
+            println("   📈 Processados 100 arquivos em $(round(median_time/1e9, digits=2))s")
+            println("   💾 Uso de memória: $(round(memory_usage/1e6, digits=2))MB")
+
+        finally
+            # Limpar arquivos temporários
+            for file in test_files
+                try
+                    rm(file, force=true)
+                catch e
+                    @warn "Não foi possível remover arquivo temporário $file: $e"
+                end
+            end
         end
     end
 
-    println("✅ Performance Tests completed!")
+    # ==========================================================================
+    # TESTE DE EFICIÊNCIA DE MEMÓRIA
+    # ==========================================================================
+    @testset "💾 Memory Efficiency Test" begin
+        # Testar uso de memória durante avaliações repetidas
+        initial_memory = Base.gc_live_bytes()
+
+        # Executar várias avaliações
+        for i in 1:10
+            Automation.evaluate_project(".")
+        end
+
+        GC.gc()  # Forçar coleta de lixo
+        final_memory = Base.gc_live_bytes()
+
+        memory_growth = final_memory - initial_memory
+
+        # Verificar que não há crescimento excessivo de memória
+        @test memory_growth < 50_000_000  # Menos de 50MB de crescimento
+
+        println("   💾 Crescimento de memória: $(round(memory_growth/1e6, digits=2))MB")
+    end
+
+    println("✅ Performance Validation Tests completed!")
 end

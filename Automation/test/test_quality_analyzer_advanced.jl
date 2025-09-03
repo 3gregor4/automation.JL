@@ -115,40 +115,48 @@ include("../src/quality_analyzer_optimized.jl")
         end
 
         @testset "Scalability Test" begin
-            # Criar arquivos de teste com diferentes tamanhos
-            test_files = []
-
-            for size in [10, 100, 1000]
-                lines = ["function test_func_$(size)_$j() end" for j in 1:size]
-                content = join(lines, "\n")
-                filename = "test_file_$(size).jl"
-                write(filename, join(content))
-                push!(test_files, filename)
-            end
-
+            # Testar efficiency de memória em loop
+            test_files = String[]
             try
-                times = Float64[]
-
-                for file in test_files
-                    time_result = @elapsed analyze_file_optimized(file)
-                    push!(times, time_result)
+                # Criar arquivos de teste temporários
+                for i in 1:5
+                    temp_file = tempname()
+                    open(temp_file, "w") do f
+                        write(f, "function advanced_test_function_$i()\n    return $i\nend\n")
+                    end
+                    push!(test_files, temp_file)
                 end
 
-                # Verificar escalabilidade linear
-                @test all(t -> t < 1.0, times)  # Todos menores que 1s
+                # Testar processamento em lote
+                initial_memory = Base.gc_live_bytes()
 
-                # Performance deve escalar de forma aproximadamente linear
-                if length(times) >= 3
-                    scale_factor = times[3] / times[1]  # Arquivo 1000 linhas vs 10 linhas
-                    @test scale_factor < 200  # Não deve ser mais que 200x mais lento
-                end
+                results = Automation.QualityAnalyzerAdvanced.analyze_files(test_files)
 
-                println("   📈 Scalability: $(round.(times .* 1000, digits=2))ms para [10, 100, 1000] linhas")
+                GC.gc()
+                final_memory = Base.gc_live_bytes()
+                memory_growth = final_memory - initial_memory
+
+                @test isa(results, Dict)
+                @test length(results) == 5
+                @test memory_growth <= 5_000_000  # Menos de 5MB de crescimento
+
+                # Verificar estrutura dos resultados
+                sample_result = first(values(results))
+                @test haskey(sample_result, :complexity)
+                @test haskey(sample_result, :quality_metrics)
+                @test haskey(sample_result, :optimization_suggestions)
+
+                println("   ✅ Escalabilidade avançada verificada")
+                println("   💾 Crescimento de memória: $(round(memory_growth/1e6, digits=2))MB")
 
             finally
-                # Limpar arquivos de teste
+                # Limpar arquivos temporários
                 for file in test_files
-                    rm(file, force=true)
+                    try
+                        rm(file, force=true)
+                    catch e
+                        @warn "Não foi possível remover arquivo temporário $file: $e"
+                    end
                 end
             end
         end

@@ -23,8 +23,8 @@ using TOML
 function validate_csga_score(test_phase::String)
     println("\n🔍 Validação CSGA - $test_phase")
     try
-        # Usar o diretório do projeto absoluto e mostrar informações de depuração
-        project_path = pwd()
+        # Usar o diretório do projeto principal (um nível acima do diretório test)
+        project_path = dirname(pwd())
         println("   📁 Caminho do projeto: $project_path")
 
         # Verificar se o arquivo Project.toml existe
@@ -32,8 +32,10 @@ function validate_csga_score(test_phase::String)
         println("   📄 Project.toml existe: $(isfile(project_file))")
 
         # Listar arquivos no diretório para verificar estrutura
-        files = readdir(project_path)
-        println("   📂 Arquivos no diretório: $(join(files[1:min(5, end)], ", "))")
+        if isdir(project_path)
+            files = readdir(project_path)
+            println("   📂 Arquivos no diretório: $(join(files[1:min(5, end)], ", "))")
+        end
 
         score = Automation.evaluate_project(project_path)
         println(

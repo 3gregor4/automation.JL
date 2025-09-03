@@ -25,7 +25,9 @@ using Statistics
     @testset "🎯 Four Pillars Integration Test" begin
         println("\n🔍 Verificando integração dos 4 pilares CSGA...")
 
-        csga_score = Automation.evaluate_project(".")
+        # Usar o diretório do projeto principal (um nível acima do diretório test)
+        project_path = dirname(pwd())
+        csga_score = Automation.evaluate_project(project_path)
 
         @testset "Pillar Weight Validation" begin
             # Validar pesos dos pilares conforme especificação híbrida
@@ -65,7 +67,9 @@ using Statistics
     @testset "🏆 Expert Level Achievement Test" begin
         println("\n🎯 Verificando conquista do nível Expert...")
 
-        csga_score = Automation.evaluate_project(".")
+        # Usar o diretório do projeto principal (um nível acima do diretório test)
+        project_path = dirname(pwd())
+        csga_score = Automation.evaluate_project(project_path)
         target_score = 87.4  # Meta consistente para nível Expert
         actual_score = csga_score.overall_score
 
@@ -123,7 +127,9 @@ using Statistics
     @testset "🧪 Testing Automation Optimization Validation" begin
         println("\n⚙️ Validando otimização de Testing Automation...")
 
-        csga_score = Automation.evaluate_project(".")
+        # Usar o diretório do projeto principal (um nível acima do diretório test)
+        project_path = dirname(pwd())
+        csga_score = Automation.evaluate_project(project_path)
         testing_automation_score =
             get(csga_score.automation_pillar.metrics, "testing_automation", 0.0)
 
@@ -140,7 +146,7 @@ using Statistics
         @testset "Testing Infrastructure Quality" begin
             # Verificar que a infraestrutura de testes foi implementada
 
-            # Arquivos de teste modulares
+            # Arquivos de teste modulares (caminhos relativos ao diretório raiz do projeto)
             expected_test_files = [
                 "test/runtests.jl",
                 "test/test_security_pillar.jl",
@@ -151,8 +157,11 @@ using Statistics
             ]
 
             implemented_files = 0
+            # Usar o diretório do projeto principal para verificar os arquivos
+            project_path = dirname(pwd())
             for file in expected_test_files
-                if isfile(file)
+                full_path = joinpath(project_path, file)
+                if isfile(full_path)
                     implemented_files += 1
                 end
             end
@@ -197,7 +206,9 @@ using Statistics
         tokens_invested = 5_000  # 5K tokens investidos
         baseline_score = 87.4    # Score baseline consistente com meta Expert
 
-        csga_score = Automation.evaluate_project(".")
+        # Usar o diretório do projeto principal (um nível acima do diretório test)
+        project_path = dirname(pwd())
+        csga_score = Automation.evaluate_project(project_path)
         final_score = csga_score.overall_score
 
         @testset "ROI Calculation" begin
@@ -236,7 +247,7 @@ using Statistics
             @test testing_improvement >= 0.0
 
             # Overall score deve manter Expert
-            @test final_score >= 87.4
+            @test csga_score.overall_score >= 87.4
             @test csga_score.maturity_level == "Expert"
 
             println(
@@ -252,7 +263,9 @@ using Statistics
     @testset "📋 Consolidated Achievement Report" begin
         println("\n📋 Gerando Relatório Consolidado de Conquistas...")
 
-        csga_score = Automation.evaluate_project(".")
+        # Usar o diretório do projeto principal (um nível acima do diretório test)
+        project_path = dirname(pwd())
+        csga_score = Automation.evaluate_project(project_path)
 
         @testset "Achievement Summary Generation" begin
             # Dados para o relatório
