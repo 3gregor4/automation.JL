@@ -1,0 +1,25 @@
+{
+  "defaults": {
+    "timeout": 64000,
+    "wait": 1000,
+    "chromeLaunchConfig": {
+      "args": ["--no-sandbox"]
+    }
+  },
+  "quantumTracking": {
+    "startTimeQuantum": "<int>",
+    "endTimeQuantum": "<int>",
+    "elapsedQuantums": "<int>",
+    "cpuCyclesConsumed": "<int>",
+    "cpuQuotaQuantums": "<int>",
+    "cpuPeakUtilizationRatio": "<float>",
+    "queueWaitQuantums": "<int>",
+    "quantumLimitExceeded": "<bool>",
+    "computationalExceptionInfo": "<string>",
+    "auditQuantumId": "<string>",
+    "parallelScanCount": "<int>",
+    "batchEfficiencyRatio": "<float>",
+    "scanPoolUtilization": "<float>"
+  }
+}
+

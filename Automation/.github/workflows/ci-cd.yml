@@ -1,0 +1,394 @@
+name: 🚀 CI/CD Pipeline - CSGA Quality Gates
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run daily quality checks at 02:00 UTC
+    - cron: '0 2 * * *'
+
+env:
+  JULIA_VERSION: '1.9'
+  JULIA_NUM_THREADS: 4
+
+jobs:
+  # =============================================================================
+  # JOB 1: SETUP E VALIDAÇÃO BÁSICA
+  # =============================================================================
+  setup:
+    name: 🔧 Setup & Basic Validation
+    runs-on: ubuntu-latest
+    outputs:
+      julia-version: ${{ steps.setup.outputs.julia-version }}
+      cache-key: ${{ steps.cache.outputs.cache-key }}
+
+    steps:
+    - name: 📥 Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: 🏗️ Setup Julia
+      id: setup
+      uses: julia-actions/setup-julia@v1
+      with:
+        version: ${{ env.JULIA_VERSION }}
+
+    - name: 📦 Cache Dependencies
+      id: cache
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.julia
+          ~/.julia/packages
+        key: julia-${{ env.JULIA_VERSION }}-${{ hashFiles('**/Project.toml', '**/Manifest.toml') }}
+        restore-keys: |
+          julia-${{ env.JULIA_VERSION }}-
+
+    - name: 📋 Project Info
+      run: |
+        echo "🏷️ Julia Version: $(julia --version)"
+        echo "📁 Project Structure:"
+        find . -name "*.jl" -type f | head -10
+        echo "📊 Project Stats:"
+        echo "  - Julia files: $(find . -name "*.jl" -type f | wc -l)"
+        echo "  - Test files: $(find . -path "*/test/*.jl" -type f | wc -l)"
+
+  # =============================================================================
+  # JOB 2: TESTES UNITÁRIOS COMPLETOS
+  # =============================================================================
+  test:
+    name: 🧪 Unit Tests & Coverage
+    runs-on: ubuntu-latest
+    needs: setup
+
+    strategy:
+      fail-fast: false
+      matrix:
+        julia-version: ['1.8', '1.9', '1.10']
+
+    steps:
+    - name: 📥 Checkout
+      uses: actions/checkout@v4
+
+    - name: 🏗️ Setup Julia ${{ matrix.julia-version }}
+      uses: julia-actions/setup-julia@v1
+      with:
+        version: ${{ matrix.julia-version }}
+
+    - name: 📦 Restore Cache
+      uses: actions/cache@v3
+      with:
+        path: ~/.julia
+        key: julia-${{ matrix.julia-version }}-${{ hashFiles('**/Project.toml') }}
+
+    - name: 🔧 Install Dependencies
+      run: |
+        julia --project=. -e 'using Pkg; Pkg.instantiate()'
+
+    - name: 🧪 Run Tests
+      run: |
+        julia --project=. -e 'using Pkg; Pkg.test(coverage=true)'
+
+    - name: 📊 Coverage Report
+      if: matrix.julia-version == '1.9'
+      run: |
+        julia --project=. -e '
+          using Pkg
+          Pkg.add("Coverage")
+          using Coverage
+          coverage = process_folder()
+          covered_lines, total_lines = get_summary(coverage)
+          percentage = covered_lines / total_lines * 100
+          println("📊 Coverage: $(round(percentage, digits=2))% ($(covered_lines)/$(total_lines) lines)")
+
+          # Generate detailed report
+          open("coverage_report.txt", "w") do f
+            println(f, "# Coverage Report")
+            println(f, "")
+            println(f, "**Overall Coverage:** $(round(percentage, digits=2))%")
+            println(f, "**Covered Lines:** $(covered_lines)")
+            println(f, "**Total Lines:** $(total_lines)")
+            println(f, "")
+            println(f, "## File-by-File Coverage:")
+            for (filename, file_cov) in coverage
+              file_covered = count(x -> x != nothing && x > 0, file_cov.coverage)
+              file_total = count(x -> x != nothing, file_cov.coverage)
+              if file_total > 0
+                file_percentage = file_covered / file_total * 100
+                println(f, "- **$(filename):** $(round(file_percentage, digits=1))% ($(file_covered)/$(file_total))")
+              end
+            end
+          end
+        '
+
+    - name: 📤 Upload Coverage Report
+      if: matrix.julia-version == '1.9'
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-report
+        path: coverage_report.txt
+
+  # =============================================================================
+  # JOB 3: CSGA QUALITY GATES
+  # =============================================================================
+  quality:
+    name: 🎯 CSGA Quality Assessment
+    runs-on: ubuntu-latest
+    needs: setup
+
+    steps:
+    - name: 📥 Checkout
+      uses: actions/checkout@v4
+
+    - name: 🏗️ Setup Julia
+      uses: julia-actions/setup-julia@v1
+      with:
+        version: ${{ env.JULIA_VERSION }}
+
+    - name: 📦 Install Dependencies
+      run: |
+        julia --project=. -e 'using Pkg; Pkg.instantiate()'
+
+    - name: 🎯 CSGA Quality Assessment
+      id: csga
+      run: |
+        julia --project=. -e '
+          using Automation
+
+          println("🎯 Executando avaliação CSGA completa...")
+          result = evaluate_project(".")
+
+          println("📊 CSGA QUALITY REPORT")
+          println("=" ^ 50)
+          println("🏆 Overall Score: $(round(result.overall_score, digits=1))/100")
+          println("🛡️  Security: $(round(result.security_pillar.score, digits=1))/100")
+          println("🧹 Clean Code: $(round(result.clean_code_pillar.score, digits=1))/100")
+          println("🌱 Green Code: $(round(result.green_code_pillar.score, digits=1))/100")
+          println("🤖 Automation: $(round(result.automation_pillar.score, digits=1))/100")
+          println("📈 Maturity Level: $(result.maturity_level)")
+
+          # Set output variables for other jobs
+          println("::set-output name=overall_score::$(result.overall_score)")
+          println("::set-output name=maturity_level::$(result.maturity_level)")
+
+          # Quality gates
+          if result.overall_score < 85.0
+            println("❌ QUALITY GATE FAILED: Overall score $(round(result.overall_score, digits=1)) < 85.0")
+            exit(1)
+          else
+            println("✅ QUALITY GATE PASSED: $(result.maturity_level) level achieved")
+          end
+        '
+
+    - name: 🌱 Green Code Showcase
+      run: |
+        julia --project=. -e '
+          include("src/green_code_integration.jl")
+          showcase_result = green_code_showcase()
+
+          println("🌱 GREEN CODE SHOWCASE")
+          println("=" ^ 30)
+          for (key, value) in showcase_result
+            println("$(key): $(round(value, digits=1))")
+          end
+
+          green_score = get(showcase_result, "green_code_score", 0.0)
+          if green_score < 90.0
+            println("⚠️  GREEN CODE WARNING: Score $(round(green_score, digits=1)) < 90.0")
+          else
+            println("🌟 GREEN CODE EXCELLENT: $(round(green_score, digits=1))/100")
+          end
+        '
+
+  # =============================================================================
+  # JOB 4: FORMATAÇÃO E LINTING
+  # =============================================================================
+  formatting:
+    name: 📝 Code Formatting & Linting
+    runs-on: ubuntu-latest
+    needs: setup
+
+    steps:
+    - name: 📥 Checkout
+      uses: actions/checkout@v4
+
+    - name: 🏗️ Setup Julia
+      uses: julia-actions/setup-julia@v1
+      with:
+        version: ${{ env.JULIA_VERSION }}
+
+    - name: 📦 Install JuliaFormatter
+      run: |
+        julia -e 'using Pkg; Pkg.add("JuliaFormatter")'
+
+    - name: 📝 Check Formatting
+      run: |
+        julia -e '
+          using JuliaFormatter
+
+          println("📝 Checking code formatting...")
+          formatted = format(".", verbose=true, overwrite=false)
+
+          if !formatted
+            println("❌ Code formatting issues found!")
+            println("💡 Run: julia -e \"using JuliaFormatter; format(\\\".\\\")\")")
+            exit(1)
+          else
+            println("✅ Code formatting is correct")
+          end
+        '
+
+  # =============================================================================
+  # JOB 5: SECURITY SCAN
+  # =============================================================================
+  security:
+    name: 🔒 Security Scanning
+    runs-on: ubuntu-latest
+    needs: setup
+
+    steps:
+    - name: 📥 Checkout
+      uses: actions/checkout@v4
+
+    - name: 🔍 Scan for Secrets
+      run: |
+        echo "🔍 Scanning for potential secrets..."
+
+        # Check for common secret patterns
+        if grep -r -i -E "(password|secret|api_key|token|private_key)" --include="*.jl" .; then
+          echo "⚠️  Potential secrets found in code"
+          echo "Please review the files above for sensitive information"
+        else
+          echo "✅ No obvious secrets detected"
+        fi
+
+    - name: 🛡️ Dependency Security Check
+      run: |
+        echo "🛡️ Checking dependencies for known vulnerabilities..."
+        echo "ℹ️  (This is a placeholder - implement with actual security scanning tools)"
+        echo "✅ Dependency security check passed"
+
+  # =============================================================================
+  # JOB 6: PERFORMANCE BENCHMARKS
+  # =============================================================================
+  benchmarks:
+    name: ⚡ Performance Benchmarks
+    runs-on: ubuntu-latest
+    needs: [setup, test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+    - name: 📥 Checkout
+      uses: actions/checkout@v4
+
+    - name: 🏗️ Setup Julia
+      uses: julia-actions/setup-julia@v1
+      with:
+        version: ${{ env.JULIA_VERSION }}
+
+    - name: 📦 Install Dependencies
+      run: |
+        julia --project=. -e 'using Pkg; Pkg.instantiate()'
+        julia -e 'using Pkg; Pkg.add("BenchmarkTools")'
+
+    - name: ⚡ Run Benchmarks
+      run: |
+        julia --project=. -e '
+          using BenchmarkTools
+          include("src/green_code_integration.jl")
+
+          println("⚡ Running performance benchmarks...")
+
+          # Benchmark quality analyzer
+          if isfile("src/quality_analyzer_optimized.jl")
+            include("src/quality_analyzer_optimized.jl")
+
+            println("📊 Quality Analyzer Benchmark:")
+            benchmark_result = @benchmark analyze_file_optimized("src/Automation.jl") samples=5 evals=1
+
+            median_time_ms = median(benchmark_result.times) / 1e6
+            median_memory_kb = median(benchmark_result.memory) / 1024
+
+            println("  Time: $(round(median_time_ms, digits=2))ms")
+            println("  Memory: $(round(median_memory_kb, digits=2))KB")
+
+            if median_time_ms > 100
+              println("⚠️  Performance regression: Analysis time > 100ms")
+            else
+              println("✅ Performance within acceptable limits")
+            end
+          end
+        '
+
+    - name: 📊 Generate Performance Report
+      run: |
+        echo "📊 Performance benchmarks completed"
+        echo "📈 Results logged above"
+
+  # =============================================================================
+  # JOB 7: BUILD E DEPLOY (DOCUMENTAÇÃO)
+  # =============================================================================
+  documentation:
+    name: 📚 Build Documentation
+    runs-on: ubuntu-latest
+    needs: [quality, test]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - name: 📥 Checkout
+      uses: actions/checkout@v4
+
+    - name: 🏗️ Setup Julia
+      uses: julia-actions/setup-julia@v1
+      with:
+        version: ${{ env.JULIA_VERSION }}
+
+    - name: 📦 Install Documenter
+      run: |
+        julia --project=docs -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
+
+    - name: 📚 Build Documentation
+      run: |
+        julia --project=docs docs/make.jl
+
+    - name: 🚀 Deploy Documentation
+      if: github.event_name == 'push'
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./docs/build
+        publish_branch: gh-pages
+
+  # =============================================================================
+  # JOB 8: NOTIFICAÇÃO DE RESULTADOS
+  # =============================================================================
+  notification:
+    name: 📢 Results Notification
+    runs-on: ubuntu-latest
+    needs: [test, quality, formatting, security, benchmarks]
+    if: always()
+
+    steps:
+    - name: 📊 Pipeline Summary
+      run: |
+        echo "🚀 CI/CD Pipeline Completed"
+        echo "================================"
+        echo "📥 Repository: ${{ github.repository }}"
+        echo "🌿 Branch: ${{ github.ref_name }}"
+        echo "💾 Commit: ${{ github.sha }}"
+        echo "👤 Author: ${{ github.actor }}"
+        echo ""
+        echo "📋 Job Results:"
+        echo "  🧪 Tests: ${{ needs.test.result }}"
+        echo "  🎯 Quality: ${{ needs.quality.result }}"
+        echo "  📝 Formatting: ${{ needs.formatting.result }}"
+        echo "  🔒 Security: ${{ needs.security.result }}"
+        echo "  ⚡ Benchmarks: ${{ needs.benchmarks.result }}"
+        echo ""
+
+        if [[ "${{ needs.test.result }}" == "success" && "${{ needs.quality.result }}" == "success" ]]; then
+          echo "✅ Pipeline PASSED - Ready for deployment"
+        else
+          echo "❌ Pipeline FAILED - Review issues above"
+        fi

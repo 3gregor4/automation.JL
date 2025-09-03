@@ -1,0 +1,19 @@
+{
+    "Core Functions": {
+        "file_io": {
+            "allocs": 18,
+            "median_time_ms": 0.006783299999999999,
+            "memory_bytes": 3048
+        },
+        "math_operations": {
+            "allocs": 6,
+            "median_time_ms": 0.00205,
+            "memory_bytes": 16512
+        },
+        "string_processing": {
+            "allocs": 15,
+            "median_time_ms": 0.01725,
+            "memory_bytes": 40752
+        }
+    }
+}

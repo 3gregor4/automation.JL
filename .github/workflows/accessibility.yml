@@ -1,0 +1,62 @@
+name: Accessibility Tests
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  a11y:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18.x'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Build project
+      run: npm run build
+      
+    - name: Start server
+      run: npm run preview & sleep 5
+      
+    - name: Run accessibility tests
+      id: a11y_test
+      run: |
+        start_time=$(date +%s%N)
+        
+        # Executar testes Pa11y-CI
+        npm run test:accessibility > a11y_results.txt
+        test_exit_code=$?
+        
+        end_time=$(date +%s%N)
+        elapsed_quantums=$((($end_time - $start_time) / 1000000))
+        
+        # Métricas quantum
+        echo "QUANTUM_METRICS={\"elapsed_quantums\":$elapsed_quantums}" >> $GITHUB_ENV
+        
+        # Verificar falhas de nível A/AA
+        if grep -q "Level A\|Level AA" a11y_results.txt; then
+          echo "Falhas de acessibilidade A/AA encontradas"
+          exit 1
+        fi
+        
+        exit $test_exit_code
+      
+    - name: Post quantum metrics
+      if: always()
+      run: |
+        echo "Accessibility test metrics:"
+        echo "Elapsed quantums: ${{ env.QUANTUM_METRICS }}"
+
+    - name: Block PR on failure
+      if: failure()
+      run: |
+        echo "Accessibility tests failed - blocking PR"
+        exit 1
+

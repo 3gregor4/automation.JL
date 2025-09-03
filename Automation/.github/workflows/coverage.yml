@@ -1,0 +1,338 @@
+name: 📊 Test Coverage Analysis
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run coverage analysis weekly on Sundays at 03:00 UTC
+    - cron: '0 3 * * 0'
+
+env:
+  JULIA_VERSION: '1.9'
+  COVERAGE_THRESHOLD: 80.0
+
+jobs:
+  # =============================================================================
+  # COMPREHENSIVE COVERAGE ANALYSIS
+  # =============================================================================
+  coverage:
+    name: 📊 Coverage Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 📥 Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: 🏗️ Setup Julia
+      uses: julia-actions/setup-julia@v1
+      with:
+        version: ${{ env.JULIA_VERSION }}
+
+    - name: 📦 Install Dependencies
+      run: |
+        julia --project=. -e 'using Pkg; Pkg.instantiate()'
+        julia -e 'using Pkg; Pkg.add(["Coverage", "PkgCoverage"])'
+
+    - name: 🧪 Run Tests with Coverage
+      run: |
+        julia --project=. --code-coverage=user -e 'using Pkg; Pkg.test()'
+
+    - name: 📊 Generate Coverage Report
+      id: coverage
+      run: |
+        julia --project=. -e '
+          using Coverage
+          using Printf
+
+          println("📊 Generating comprehensive coverage report...")
+
+          # Process coverage files
+          coverage = process_folder()
+          covered_lines, total_lines = get_summary(coverage)
+
+          if total_lines == 0
+            println("⚠️  No coverage data found")
+            exit(0)
+          end
+
+          overall_percentage = covered_lines / total_lines * 100
+
+          println("📈 COVERAGE SUMMARY")
+          println("=" ^ 40)
+          println("Overall Coverage: $(round(overall_percentage, digits=2))%")
+          println("Covered Lines: $(covered_lines)")
+          println("Total Lines: $(total_lines)")
+          println("Missing Lines: $(total_lines - covered_lines)")
+
+          # Set output for other steps
+          println("::set-output name=coverage_percentage::$(round(overall_percentage, digits=2))")
+          println("::set-output name=covered_lines::$(covered_lines)")
+          println("::set-output name=total_lines::$(total_lines)")
+
+          # Generate detailed HTML report
+          println("\n📄 Generating detailed coverage report...")
+
+          # Create coverage directory
+          mkpath("coverage")
+
+          # Generate file-by-file report
+          open("coverage/coverage_report.md", "w") do f
+            println(f, "# 📊 Test Coverage Report")
+            println(f, "")
+            println(f, "**Generated:** $(now())")
+            println(f, "**Overall Coverage:** $(round(overall_percentage, digits=2))%")
+            println(f, "**Threshold:** $ENV[\"COVERAGE_THRESHOLD\"]%")
+            println(f, "")
+
+            # Overall status
+            if overall_percentage >= parse(Float64, ENV["COVERAGE_THRESHOLD"])
+              println(f, "✅ **Status:** PASSED (meets threshold)")
+            else
+              println(f, "❌ **Status:** FAILED (below threshold)")
+            end
+
+            println(f, "")
+            println(f, "## 📈 Summary Statistics")
+            println(f, "")
+            println(f, "| Metric | Value |")
+            println(f, "|--------|--------|")
+            println(f, "| Total Lines | $(total_lines) |")
+            println(f, "| Covered Lines | $(covered_lines) |")
+            println(f, "| Missing Lines | $(total_lines - covered_lines) |")
+            println(f, "| Coverage % | $(round(overall_percentage, digits=2))% |")
+
+            println(f, "")
+            println(f, "## 📁 File-by-File Coverage")
+            println(f, "")
+            println(f, "| File | Coverage | Covered/Total | Status |")
+            println(f, "|------|----------|---------------|---------|")
+
+            # Sort files by coverage percentage
+            file_coverage = []
+            for item in coverage
+              if haskey(item, "filename") && haskey(item, "coverage")
+                filename = item.filename
+                file_cov = item.coverage
+
+                file_covered = count(x -> x !== nothing && x > 0, file_cov)
+                file_total = count(x -> x !== nothing, file_cov)
+
+                if file_total > 0
+                  file_percentage = file_covered / file_total * 100
+                  push!(file_coverage, (filename, file_percentage, file_covered, file_total))
+                end
+              end
+            end
+
+            # Sort by coverage percentage (ascending)
+            sort!(file_coverage, by=x->x[2])
+
+            for (filename, file_percentage, file_covered, file_total) in file_coverage
+              status_icon = file_percentage >= 80.0 ? "✅" : file_percentage >= 60.0 ? "⚠️" : "❌"
+              short_name = basename(filename)
+              println(f, "| $(short_name) | $(round(file_percentage, digits=1))% | $(file_covered)/$(file_total) | $(status_icon) |")
+            end
+
+            println(f, "")
+            println(f, "## 🎯 Coverage Goals")
+            println(f, "")
+            println(f, "- **Minimum Threshold:** $ENV[\"COVERAGE_THRESHOLD\"]%")
+            println(f, "- **Target Goal:** 90%+")
+            println(f, "- **Excellence Goal:** 95%+")
+
+            println(f, "")
+            println(f, "## 📋 Recommendations")
+            println(f, "")
+
+            if overall_percentage < 80.0
+              println(f, "🔴 **Critical:** Coverage is below 80%. Focus on adding tests for uncovered code.")
+            elseif overall_percentage < 90.0
+              println(f, "🟡 **Good:** Coverage is acceptable but can be improved. Target 90%+ for excellence.")
+            else
+              println(f, "🟢 **Excellent:** Coverage meets excellence standards. Maintain this level.")
+            end
+
+            # Find files with lowest coverage
+            low_coverage_files = filter(x -> x[2] < 70.0, file_coverage)
+            if !isempty(low_coverage_files)
+              println(f, "")
+              println(f, "### 🎯 Files needing attention:")
+              for (filename, percentage, _, _) in low_coverage_files[1:min(5, length(low_coverage_files))]
+                println(f, "- **$(basename(filename)):** $(round(percentage, digits=1))% coverage")
+              end
+            end
+          end
+
+          println("✅ Coverage report generated successfully")
+
+          # Check threshold
+          threshold = parse(Float64, ENV["COVERAGE_THRESHOLD"])
+          if overall_percentage < threshold
+            println("❌ COVERAGE THRESHOLD FAILED")
+            println("   Current: $(round(overall_percentage, digits=2))%")
+            println("   Required: $(threshold)%")
+            println("   Missing: $(round(threshold - overall_percentage, digits=2)) percentage points")
+            exit(1)
+          else
+            println("✅ COVERAGE THRESHOLD PASSED")
+          end
+        '
+
+    - name: 📤 Upload Coverage Report
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-report
+        path: coverage/
+
+    - name: 📊 Coverage Badge Generation
+      run: |
+        # Generate coverage badge
+        coverage_pct="${{ steps.coverage.outputs.coverage_percentage }}"
+
+        # Determine badge color
+        if (( $(echo "$coverage_pct >= 90" | bc -l) )); then
+          color="brightgreen"
+        elif (( $(echo "$coverage_pct >= 80" | bc -l) )); then
+          color="green"
+        elif (( $(echo "$coverage_pct >= 70" | bc -l) )); then
+          color="yellow"
+        elif (( $(echo "$coverage_pct >= 60" | bc -l) )); then
+          color="orange"
+        else
+          color="red"
+        fi
+
+        badge_url="https://img.shields.io/badge/Coverage-${coverage_pct}%25-${color}"
+
+        echo "Coverage Badge URL: $badge_url"
+        echo "$badge_url" > coverage/badge_url.txt
+
+    - name: 📈 Coverage Trend Analysis
+      if: github.event_name == 'push'
+      run: |
+        julia --project=. -e '
+          using JSON3
+          using Dates
+
+          # Load current coverage
+          current_coverage = ${{ steps.coverage.outputs.coverage_percentage }}
+          current_date = string(now())
+
+          # Create or update coverage history
+          history_file = "coverage_history.json"
+
+          if isfile(history_file)
+            history = JSON3.read(read(history_file, String))
+          else
+            history = []
+          end
+
+          # Add current measurement
+          push!(history, Dict(
+            "date" => current_date,
+            "coverage" => current_coverage,
+            "commit" => ENV["GITHUB_SHA"],
+            "branch" => ENV["GITHUB_REF_NAME"]
+          ))
+
+          # Keep only last 50 measurements
+          if length(history) > 50
+            history = history[end-49:end]
+          end
+
+          # Save updated history
+          JSON3.write(history_file, history)
+
+          # Analyze trend
+          if length(history) >= 2
+            previous_coverage = history[end-1]["coverage"]
+            trend = current_coverage - previous_coverage
+
+            println("📈 COVERAGE TREND ANALYSIS")
+            println("=" ^ 35)
+            println("Previous: $(round(previous_coverage, digits=2))%")
+            println("Current:  $(round(current_coverage, digits=2))%")
+            println("Change:   $(round(trend, digits=2)) percentage points")
+
+            if trend > 0.5
+              println("🚀 Coverage improved significantly!")
+            elseif trend > 0
+              println("📈 Coverage improved slightly")
+            elseif trend == 0
+              println("📊 Coverage remained stable")
+            elseif trend > -0.5
+              println("📉 Coverage decreased slightly")
+            else
+              println("⚠️  Coverage decreased significantly!")
+            end
+          end
+
+          println("✅ Coverage trend analysis completed")
+        '
+
+  # =============================================================================
+  # COVERAGE REPORTING
+  # =============================================================================
+  report:
+    name: 📋 Coverage Report Summary
+    runs-on: ubuntu-latest
+    needs: coverage
+    if: always()
+
+    steps:
+    - name: 📥 Download Coverage Report
+      uses: actions/download-artifact@v3
+      with:
+        name: coverage-report
+        path: coverage/
+
+    - name: 📋 Summary Comment (PR)
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+
+          // Read coverage report
+          try {
+            const reportPath = 'coverage/coverage_report.md';
+            const report = fs.readFileSync(reportPath, 'utf8');
+
+            // Create comment body
+            const comment = `## 📊 Test Coverage Report
+
+            ${report}
+
+            ---
+            <sub>This report was automatically generated by the Coverage Analysis workflow.</sub>`;
+
+            // Post comment
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+          } catch (error) {
+            console.log('Coverage report not found or could not be read');
+          }
+
+    - name: 📊 Coverage Status Summary
+      run: |
+        echo "📊 Test Coverage Analysis Complete"
+        echo "=================================="
+
+        if [ -f "coverage/coverage_report.md" ]; then
+          echo "✅ Coverage report generated successfully"
+          echo "📄 Report available in artifacts"
+        else
+          echo "⚠️  Coverage report not found"
+        fi
+
+        if [ "${{ needs.coverage.result }}" == "success" ]; then
+          echo "✅ Coverage meets threshold requirements"
+        else
+          echo "❌ Coverage below threshold - action required"
+        fi

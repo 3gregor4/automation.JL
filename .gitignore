@@ -1,0 +1,55 @@
+# ===== MONOREPO GERAL =====
+
+# Variáveis de ambiente (segredos em texto claro)
+.env
+.env.*
+!.env.example
+
+# Artefatos de dependências
+node_modules/
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Arquivos e diretórios de build/output
+dist/
+build/
+.turbo/
+.output/
+.next/
+coverage/
+
+# Arquivos temporários e de sistema
+.DS_Store
+
+# Logs e lockfiles
+*.log
+*.lock
+
+# Gerados durante debugging/teste
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.tsbuildinfo
+
+# Pastas de editores/IDEs
+.vscode/
+.idea/
+
+# Arquivos de configuração específicos de usuários ou sessões locais
+*.local
+
+# Backups e arquivos de swap
+*~
+*.swp
+
+# Outros caches e artefatos transitórios
+.cache/
+tmp/
+temp/
+out/
+
+# Arquivos privados (ajuste conforme necessário)
+secret.*
+secrets.*
+
