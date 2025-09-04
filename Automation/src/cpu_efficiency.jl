@@ -632,19 +632,34 @@ function print_benchmark_results(results::Dict)
         @printf "%s\n" ("-"^(length(category) + 15))
 
         for (method, times) in data
-            avg_time = sum(times) / length(times)
+            # Proteção contra divisão por zero
+            avg_time = if length(times) > 0
+                sum(times) / length(times)
+            else
+                0.0
+            end
             @printf "  %-12s: %.6f seconds (avg)\n" method avg_time
         end
 
         # Calculate speedup if applicable
+        speedup = 1.0
         if haskey(data, "naive") && haskey(data, "simd")
-            speedup = sum(data["naive"]) / sum(data["simd"])
+            # Proteção contra divisão por zero
+            if sum(data["simd"]) != 0
+                speedup = sum(data["naive"]) / sum(data["simd"])
+            end
             @printf "  Speedup: %.2fx\n" speedup
         elseif haskey(data, "branched") && haskey(data, "branchless")
-            speedup = sum(data["branched"]) / sum(data["branchless"])
+            # Proteção contra divisão por zero
+            if sum(data["branchless"]) != 0
+                speedup = sum(data["branched"]) / sum(data["branchless"])
+            end
             @printf "  Speedup: %.2fx\n" speedup
         elseif haskey(data, "sequential") && haskey(data, "parallel")
-            speedup = sum(data["sequential"]) / sum(data["parallel"])
+            # Proteção contra divisão por zero
+            if sum(data["parallel"]) != 0
+                speedup = sum(data["sequential"]) / sum(data["parallel"])
+            end
             @printf "  Speedup: %.2fx\n" speedup
         end
 

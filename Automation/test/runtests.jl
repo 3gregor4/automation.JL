@@ -23,8 +23,8 @@ using TOML
 function validate_csga_score(test_phase::String)
     println("\n🔍 Validação CSGA - $test_phase")
     try
-        # Usar o diretório do projeto principal (um nível acima do diretório test)
-        project_path = dirname(pwd())
+        # Usar a função unificada para resolver o caminho do projeto
+        project_path = Automation.resolve_project_path(pwd())
         println("   📁 Caminho do projeto: $project_path")
 
         # Verificar se o arquivo Project.toml existe

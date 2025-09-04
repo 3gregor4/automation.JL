@@ -686,7 +686,12 @@ function calculate_project_metrics(file_results::Vector{FileQualityResult})
 
     metrics["total_code_smells"] = total_smells
     metrics["total_quality_issues"] = total_issues
-    metrics["issues_per_file"] = (total_smells + total_issues) / length(file_results)
+    # Proteção contra divisão por zero
+    metrics["issues_per_file"] = if length(file_results) > 0
+        (total_smells + total_issues) / length(file_results)
+    else
+        0.0
+    end
 
     return metrics
 end
@@ -708,7 +713,12 @@ function calculate_overall_quality_score(file_results::Vector{FileQualityResult}
         return mean(r -> r.maintainability_index, file_results)
     end
 
-    weighted_score = sum(r -> r.maintainability_index * (r.lines_of_code / total_loc), file_results)
+    # Proteção contra divisão por zero
+    weighted_score = if total_loc > 0
+        sum(r -> r.maintainability_index * (r.lines_of_code / total_loc), file_results)
+    else
+        mean(r -> r.maintainability_index, file_results)
+    end
 
     return weighted_score
 end

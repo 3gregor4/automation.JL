@@ -748,9 +748,16 @@ macro cpu_profile(expr)
 
         @printf "CPU Profile:\n"
         @printf "  Total time: %.2f ms\n" total_time
-        @printf "  CPU time: %.2f ms (%.1f%%)\n" cpu_time (cpu_time / total_time * 100)
-        @printf "  GC time: %.2f ms (%.1f%%)\n" gc_time (gc_time / total_time * 100)
-        @printf "  CPU efficiency: %.1f%%\n" (cpu_time / total_time * 100)
+        # Proteção contra divisão por zero
+        if total_time != 0
+            @printf "  CPU time: %.2f ms (%.1f%%)\n" cpu_time (cpu_time / total_time * 100)
+            @printf "  GC time: %.2f ms (%.1f%%)\n" gc_time (gc_time / total_time * 100)
+            @printf "  CPU efficiency: %.1f%%\n" (cpu_time / total_time * 100)
+        else
+            @printf "  CPU time: %.2f ms (0.0%%)\n" cpu_time
+            @printf "  GC time: %.2f ms (0.0%%)\n" gc_time
+            @printf "  CPU efficiency: 0.0%%\n"
+        end
 
         result
     end
@@ -777,14 +784,45 @@ function cpu_instruction_analysis(func::Function, args...; samples::Int=1000)
 
     sort!(execution_times)
 
+    # Proteção contra divisão por zero
+    coefficient_of_variation = if !isempty(execution_times) && mean(execution_times) != 0
+        std(execution_times) / mean(execution_times)
+    else
+        0.0
+    end
+
     return (
-        min_time_ms=execution_times[1],
-        median_time_ms=execution_times[samples÷2],
-        max_time_ms=execution_times[end],
-        p95_time_ms=execution_times[Int(round(samples * 0.95))],
-        p99_time_ms=execution_times[Int(round(samples * 0.99))],
-        variance=var(execution_times),
-        coefficient_of_variation=std(execution_times) / mean(execution_times),
+        min_time_ms=if !isempty(execution_times)
+            execution_times[1]
+        else
+            0.0
+        end,
+        median_time_ms=if !isempty(execution_times)
+            execution_times[samples÷2]
+        else
+            0.0
+        end,
+        max_time_ms=if !isempty(execution_times)
+            execution_times[end]
+        else
+            0.0
+        end,
+        p95_time_ms=if !isempty(execution_times)
+            execution_times[Int(round(samples * 0.95))]
+        else
+            0.0
+        end,
+        p99_time_ms=if !isempty(execution_times)
+            execution_times[Int(round(samples * 0.99))]
+        else
+            0.0
+        end,
+        variance=if !isempty(execution_times)
+            var(execution_times)
+        else
+            0.0
+        end,
+        coefficient_of_variation=coefficient_of_variation,
     )
 end
 
@@ -817,7 +855,12 @@ function cache_miss_estimation(access_pattern::Vector{Int}, cache_size::Int=3276
     end
 
     total_accesses = length(access_pattern)
-    miss_rate = misses / total_accesses
+    # Proteção contra divisão por zero
+    miss_rate = if total_accesses > 0
+        misses / total_accesses
+    else
+        0.0
+    end
 
     return (
         total_accesses=total_accesses,
@@ -853,7 +896,12 @@ function branch_prediction_analysis(branches::Vector{Bool})
         predictor_state = actual
     end
 
-    accuracy = 1.0 - (mispredictions / (n - 1))
+    # Proteção contra divisão por zero
+    accuracy = if n > 1
+        1.0 - (mispredictions / (n - 1))
+    else
+        1.0
+    end
 
     return (
         total_branches=n - 1,

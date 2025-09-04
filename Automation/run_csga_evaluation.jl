@@ -41,7 +41,7 @@ function main()
         println("\n📄 Relatório JSON salvo em: $json_file")
 
         # Gerar relatório em Markdown
-        md_report = generate_report(csga_score, :markdown)
+        md_report = generate_report(csga_score, :markup)
         md_file = joinpath(project_path, "CSGA_REPORT.md")
         open(md_file, "w") do f
             write(f, md_report)

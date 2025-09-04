@@ -360,7 +360,13 @@ function evaluate_code_organization(project_path::String)::Float64
             project_data = TOML.parsefile(project_file)
             essential_fields = ["name", "uuid", "version"]
             field_score = count(field -> haskey(project_data, field), essential_fields)
-            score += (field_score / length(essential_fields)) * 30.0
+            # Proteção contra divisão por zero
+            field_ratio = if length(essential_fields) > 0
+                field_score / length(essential_fields)
+            else
+                0.0
+            end
+            score += field_ratio * 30.0
         catch e
             score += 10.0
         end
@@ -600,7 +606,12 @@ function evaluate_code_efficiency(project_path::String)::Float64
         return 50.0
     end
 
-    efficiency_ratio = (efficient_patterns - inefficient_patterns * 2) / total_lines
+    # Proteção contra divisão por zero
+    efficiency_ratio = if total_lines > 0
+        (efficient_patterns - inefficient_patterns * 2) / total_lines
+    else
+        0.0
+    end
     base_score = 50.0 + (efficiency_ratio * 1000)
 
     return max(0.0, min(100.0, base_score))

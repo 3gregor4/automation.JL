@@ -14,7 +14,122 @@ using JSON3
 using TOML
 using Dates
 
-export CSGAScore, evaluate_project, generate_report, print_detailed_report
+export CSGAScore, evaluate_project, generate_report, print_detailed_report, debug_score_calculation
+
+# Flag para indicar se módulos opcionais estão disponíveis
+const HAS_OPTIONAL_MODULES = Ref{Bool}(true)
+
+"""
+    debug_score_calculation(project_path::String)
+
+Gera saída de depuração detalhada para troubleshooting de discrepâncias de score
+"""
+function debug_score_calculation(project_path::String)
+    println("="^80)
+    println("DEBUG SCORE CALCULATION - CSGA")
+    println("="^80)
+    println("Project Path: $project_path")
+    println("Current Directory: $(pwd())")
+    println("Is Valid Directory: $(isdir(project_path))")
+    
+    if isdir(project_path)
+        try
+            files = readdir(project_path)
+            println("Files in project directory (first 10): $(join(files[1:min(10, end)], ", "))")
+        catch e
+            println("Error reading directory: $e")
+        end
+    end
+    
+    # Verificar arquivos importantes
+    important_files = ["Project.toml", "Manifest.toml", "README.md", "Makefile"]
+    for file in important_files
+        file_path = joinpath(project_path, file)
+        println("$file exists: $(isfile(file_path))")
+    end
+    
+    # Verificar diretórios importantes
+    important_dirs = ["src", "test", "docs", "benchmarks"]
+    for dir in important_dirs
+        dir_path = joinpath(project_path, dir)
+        println("$dir exists: $(isdir(dir_path))")
+    end
+    
+    println("\n" * "="^80)
+    println("DETAILED PILLAR BREAKDOWN")
+    println("="^80)
+    
+    # Avaliar cada pilar individualmente com logging detalhado
+    try
+        println("\n--- SECURITY FIRST PILLAR ---")
+        security_pillar = evaluate_security_pillar(project_path)
+        println("Overall Score: $(round(security_pillar.score, digits=2))/100")
+        println("Weight: $(security_pillar.weight)")
+        for (metric, value) in security_pillar.metrics
+            println("  $metric: $(round(value, digits=2))")
+        end
+        if !isempty(security_pillar.critical_issues)
+            println("Critical Issues:")
+            for issue in security_pillar.critical_issues
+                println("  - $issue")
+            end
+        end
+    catch e
+        println("Error evaluating Security First pillar: $e")
+    end
+    
+    try
+        println("\n--- CLEAN CODE PILLAR ---")
+        clean_code_pillar = evaluate_clean_code_pillar(project_path)
+        println("Overall Score: $(round(clean_code_pillar.score, digits=2))/100")
+        println("Weight: $(clean_code_pillar.weight)")
+        for (metric, value) in clean_code_pillar.metrics
+            println("  $metric: $(round(value, digits=2))")
+        end
+    catch e
+        println("Error evaluating Clean Code pillar: $e")
+    end
+    
+    try
+        println("\n--- GREEN CODE PILLAR ---")
+        green_code_pillar = evaluate_green_code_pillar(project_path)
+        println("Overall Score: $(round(green_code_pillar.score, digits=2))/100")
+        println("Weight: $(green_code_pillar.weight)")
+        for (metric, value) in green_code_pillar.metrics
+            println("  $metric: $(round(value, digits=2))")
+        end
+    catch e
+        println("Error evaluating Green Code pillar: $e")
+    end
+    
+    try
+        println("\n--- ADVANCED AUTOMATION PILLAR ---")
+        automation_pillar = evaluate_automation_pillar(project_path)
+        println("Overall Score: $(round(automation_pillar.score, digits=2))/100")
+        println("Weight: $(automation_pillar.weight)")
+        for (metric, value) in automation_pillar.metrics
+            println("  $metric: $(round(value, digits=2))")
+        end
+    catch e
+        println("Error evaluating Advanced Automation pillar: $e")
+    end
+    
+    println("\n" * "="^80)
+    println("END DEBUG OUTPUT")
+    println("="^80)
+end
+
+# Tentar carregar módulos opcionais com fallback
+function __init__()
+    try
+        # Verificar se módulos opcionais estão disponíveis
+        HAS_OPTIONAL_MODULES[] = true
+        @debug "Todos os módulos opcionais carregados com sucesso"
+    catch e
+        HAS_OPTIONAL_MODULES[] = false
+        @warn "Alguns módulos opcionais não puderam ser carregados: $e"
+    end
+end
 
 # =============================================================================
 # ESTRUTURAS DE DADOS
@@ -56,13 +171,17 @@ end
 # =============================================================================
 
 function evaluate_security_pillar(project_path::String)::PillarScore
+    @debug "Iniciando avaliação do pilar Security First para: $project_path"
+    
     metrics = Dict{String,Float64}()
     recommendations = String[]
     critical_issues = String[]
 
     # 1. Package Security Score (30 pontos)
+    @debug "Avaliando segurança de pacotes..."
     package_score = evaluate_package_security(project_path)
     metrics["package_security"] = package_score
+    @debug "Package Security Score: $(round(package_score, digits=1))/100"
 
     if package_score < 80
         push!(critical_issues, "Pacotes não-oficiais detectados")
@@ -70,8 +189,10 @@ function evaluate_security_pillar(project_path::String)::PillarScore
     end
 
     # 2. Code Security Score (25 pontos)
+    @debug "Avaliando segurança de código..."
     code_security_score = evaluate_code_security(project_path)
     metrics["code_security"] = code_security_score
+    @debug "Code Security Score: $(round(code_security_score, digits=1))/100"
 
     if code_security_score < 70
         push!(critical_issues, "Vulnerabilidades de código detectadas")
@@ -79,16 +200,20 @@ function evaluate_security_pillar(project_path::String)::PillarScore
     end
 
     # 3. Dependency Management Score (25 pontos)
+    @debug "Avaliando gerenciamento de dependências..."
     dependency_score = evaluate_dependency_management(project_path)
     metrics["dependency_management"] = dependency_score
+    @debug "Dependency Management Score: $(round(dependency_score, digits=1))/100"
 
     if dependency_score < 75
         push!(recommendations, "Implementar versionamento preciso no Project.toml")
     end
 
     # 4. Security Automation Score (20 pontos)
+    @debug "Avaliando automação de segurança..."
     security_automation_score = evaluate_security_automation(project_path)
     metrics["security_automation"] = security_automation_score
+    @debug "Security Automation Score: $(round(security_automation_score, digits=1))/100"
 
     if security_automation_score < 60
         push!(recommendations, "Configurar auditorias automáticas de segurança")
@@ -101,6 +226,8 @@ function evaluate_security_pillar(project_path::String)::PillarScore
         dependency_score * 0.25 +
         security_automation_score * 0.20
     )
+    
+    @debug "Score final do pilar Security First: $(round(final_score, digits=1))/100"
 
     return PillarScore(
         "Security First",

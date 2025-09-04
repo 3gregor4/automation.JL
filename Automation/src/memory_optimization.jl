@@ -516,9 +516,22 @@ function print_memory_benchmark_results(results::Dict)
     @printf "=====================================\n\n"
 
     # Time comparison
-    pool_avg_time = sum(results["pool_time"]) / length(results["pool_time"])
-    no_pool_avg_time = sum(results["no_pool_time"]) / length(results["no_pool_time"])
-    time_speedup = no_pool_avg_time / pool_avg_time
+    # Proteção contra divisão por zero
+    pool_avg_time = if length(results["pool_time"]) > 0
+        sum(results["pool_time"]) / length(results["pool_time"])
+    else
+        1.0
+    end
+    no_pool_avg_time = if length(results["no_pool_time"]) > 0
+        sum(results["no_pool_time"]) / length(results["no_pool_time"])
+    else
+        1.0
+    end
+    time_speedup = if pool_avg_time != 0
+        no_pool_avg_time / pool_avg_time
+    else
+        1.0
+    end
 
     @printf "Average Time:\n"
     @printf "  With Pool:    %.6f seconds\n" pool_avg_time
@@ -526,9 +539,22 @@ function print_memory_benchmark_results(results::Dict)
     @printf "  Speedup:      %.2fx\n\n" time_speedup
 
     # Memory comparison
-    pool_avg_memory = sum(results["pool_memory"]) / length(results["pool_memory"])
-    no_pool_avg_memory = sum(results["no_pool_memory"]) / length(results["no_pool_memory"])
-    memory_reduction = (no_pool_avg_memory - pool_avg_memory) / no_pool_avg_memory * 100
+    # Proteção contra divisão por zero
+    pool_avg_memory = if length(results["pool_memory"]) > 0
+        sum(results["pool_memory"]) / length(results["pool_memory"])
+    else
+        0.0
+    end
+    no_pool_avg_memory = if length(results["no_pool_memory"]) > 0
+        sum(results["no_pool_memory"]) / length(results["no_pool_memory"])
+    else
+        0.0
+    end
+    memory_reduction = if no_pool_avg_memory != 0
+        (no_pool_avg_memory - pool_avg_memory) / no_pool_avg_memory * 100
+    else
+        0.0
+    end
 
     @printf "Average Memory Usage:\n"
     @printf "  With Pool:    %.2f MB\n" (pool_avg_memory / 1e6)

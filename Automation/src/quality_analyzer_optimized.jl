@@ -324,7 +324,12 @@ function calculate_comment_ratio_optimized(lines::Vector{String})
         startswith(trimmed, '#') && (comment_lines += 1)
     end
 
-    return comment_lines / length(lines)
+    # Proteção contra divisão por zero
+    return if length(lines) > 0
+        comment_lines / length(lines)
+    else
+        0.0
+    end
 end
 
 """

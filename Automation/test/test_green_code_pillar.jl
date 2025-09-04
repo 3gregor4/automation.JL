@@ -35,8 +35,10 @@ using Statistics
         end
 
         @testset "Performance Efficiency Score Calculation" begin
-            # Usar o diretório do projeto principal (um nível acima do diretório test)
-            project_path = dirname(pwd())
+            # Usar a função unificada para resolver o caminho do projeto
+            project_path = Automation.resolve_project_path(pwd())
+            println("   📁 Caminho do projeto: $project_path")
+            
             score = Automation.CSGAScoring.evaluate_performance_infrastructure(project_path)
             @test score >= 70.0
             @test score <= 100.0

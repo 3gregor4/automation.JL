@@ -7,7 +7,7 @@
 # =============================================================================
 
 function evaluate_automation_pillar(project_path::String)::PillarScore
-    metrics = Dict{String, Float64}()
+    metrics = Dict{String,Float64}()
     recommendations = String[]
     critical_issues = String[]
 
@@ -182,7 +182,13 @@ function evaluate_quality_automation(project_path::String)::Float64
     # Estrutura de diretórios completa conforme memória (25 pontos)
     recommended_dirs = ["docs", "examples", "benchmarks", "notebooks"]
     existing_dirs = count(dir -> isdir(joinpath(project_path, dir)), recommended_dirs)
-    score += (existing_dirs / length(recommended_dirs)) * 25.0
+    # Proteção contra divisão por zero
+    dir_ratio = if length(recommended_dirs) > 0
+        existing_dirs / length(recommended_dirs)
+    else
+        0.0
+    end
+    score += dir_ratio * 25.0
 
     return min(100.0, score)
 end
@@ -236,9 +242,40 @@ function evaluate_agents_integration(project_path::String)::Float64
     return min(100.0, score)
 end
 
-# =============================================================================
-# FUNÇÕES PRINCIPAIS DE AVALIAÇÃO
-# =============================================================================
+"""
+    validate_weighted_score_calculation(pillars::Vector{PillarScore}) -> Bool
+
+Valida se o cálculo da pontuação ponderada está correto
+"""
+function validate_weighted_score_calculation(pillars::Vector{PillarScore})::Bool
+    # Verificar se todos os pesos somam 1.0 (com pequena margem de erro)
+    total_weight = sum(pillar.weight for pillar in pillars)
+    weight_valid = abs(total_weight - 1.0) < 0.001
+    
+    if !weight_valid
+        @warn "Soma dos pesos dos pilares não é 1.0: $total_weight"
+        return false
+    end
+    
+    # Verificar se todos os scores estão na faixa válida (0-100)
+    for pillar in pillars
+        if pillar.score < 0.0 || pillar.score > 100.0
+            @warn "Score inválido para pilar $(pillar.name): $(pillar.score)"
+            return false
+        end
+        
+        # Verificar se as métricas estão na faixa válida
+        for (metric_name, metric_value) in pillar.metrics
+            if metric_value < 0.0 || metric_value > 100.0
+                @warn "Valor de métrica inválido para $(pillar.name).$metric_name: $metric_value"
+                return false
+            end
+        end
+    end
+    
+    @debug "Validação de cálculo ponderado passou com sucesso"
+    return true
+end
 
 """
     evaluate_project(project_path::String) -> CSGAScore
@@ -250,6 +287,8 @@ function evaluate_project(project_path::String)::CSGAScore
         throw(ArgumentError("Caminho do projeto não existe: $project_path"))
     end
 
+    @debug "Iniciando avaliação CSGA para o projeto: $project_path"
+    
     # Determinar nome do projeto
     project_name = basename(project_path)
     project_file = joinpath(project_path, "Project.toml")
@@ -258,16 +297,90 @@ function evaluate_project(project_path::String)::CSGAScore
         try
             project_data = TOML.parsefile(project_file)
             project_name = get(project_data, "name", project_name)
+            @debug "Nome do projeto determinado: $project_name"
         catch e
             # Usar nome do diretório se Project.toml não pode ser lido
+            @warn "Não foi possível ler Project.toml: $e"
         end
     end
 
-    # Avaliar cada pilar
-    security_pillar = evaluate_security_pillar(project_path)
-    clean_code_pillar = evaluate_clean_code_pillar(project_path)
-    green_code_pillar = evaluate_green_code_pillar(project_path)
-    automation_pillar = evaluate_automation_pillar(project_path)
+    # Inicializar variáveis para os pilares
+    local security_pillar, clean_code_pillar, green_code_pillar, automation_pillar
+    
+    # Avaliar cada pilar com mecanismos de fallback
+    @debug "Avaliando pilar de segurança..."
+    try
+        security_pillar = evaluate_security_pillar(project_path)
+        @debug "Pilar de segurança avaliado: $(round(security_pillar.score, digits=1))/100"
+    catch e
+        @warn "Erro avaliando pilar de segurança: $e"
+        security_pillar = PillarScore(
+            "Security First", 
+            0.0, 
+            0.30, 
+            Dict{String,Float64}(), 
+            ["Erro na avaliação do pilar de segurança"], 
+            ["Exceção durante avaliação: $e"]
+        )
+    end
+
+    @debug "Avaliando pilar de código limpo..."
+    try
+        clean_code_pillar = evaluate_clean_code_pillar(project_path)
+        @debug "Pilar de código limpo avaliado: $(round(clean_code_pillar.score, digits=1))/100"
+    catch e
+        @warn "Erro avaliando pilar de código limpo: $e"
+        clean_code_pillar = PillarScore(
+            "Clean Code", 
+            0.0, 
+            0.25, 
+            Dict{String,Float64}(), 
+            ["Erro na avaliação do pilar de código limpo"], 
+            ["Exceção durante avaliação: $e"]
+        )
+    end
+
+    @debug "Avaliando pilar de código verde..."
+    try
+        green_code_pillar = evaluate_green_code_pillar(project_path)
+        @debug "Pilar de código verde avaliado: $(round(green_code_pillar.score, digits=1))/100"
+    catch e
+        @warn "Erro avaliando pilar de código verde: $e"
+        green_code_pillar = PillarScore(
+            "Green Code", 
+            0.0, 
+            0.20, 
+            Dict{String,Float64}(), 
+            ["Erro na avaliação do pilar de código verde"], 
+            ["Exceção durante avaliação: $e"]
+        )
+    end
+
+    @debug "Avaliando pilar de automação..."
+    try
+        automation_pillar = evaluate_automation_pillar(project_path)
+        @debug "Pilar de automação avaliado: $(round(automation_pillar.score, digits=1))/100"
+        
+        # Log específico para testing automation
+        testing_automation = get(automation_pillar.metrics, "testing_automation", 0.0)
+        @debug "Testing Automation Score: $(round(testing_automation, digits=1))/100"
+    catch e
+        @warn "Erro avaliando pilar de automação: $e"
+        automation_pillar = PillarScore(
+            "Advanced Automation", 
+            0.0, 
+            0.25, 
+            Dict{String,Float64}(), 
+            ["Erro na avaliação do pilar de automação"], 
+            ["Exceção durante avaliação: $e"]
+        )
+    end
+
+    # Validar cálculo ponderado antes de prosseguir
+    pillars = [security_pillar, clean_code_pillar, green_code_pillar, automation_pillar]
+    if !validate_weighted_score_calculation(pillars)
+        @warn "Falha na validação do cálculo ponderado - continuando com avaliação"
+    end
 
     # Calcular pontuação geral ponderada conforme memória
     overall_score = (
@@ -276,6 +389,8 @@ function evaluate_project(project_path::String)::CSGAScore
         green_code_pillar.score * green_code_pillar.weight +
         automation_pillar.score * automation_pillar.weight
     )
+    
+    @debug "Score geral calculado: $(round(overall_score, digits=1))/100"
 
     # Determinar nível de maturidade
     maturity_level = if overall_score >= 87.4
@@ -296,6 +411,8 @@ function evaluate_project(project_path::String)::CSGAScore
     else
         "Crítico"
     end
+
+    @debug "Nível de maturidade: $maturity_level, Status de compliance: $compliance_status"
 
     return CSGAScore(
         project_name,
@@ -429,12 +546,12 @@ end
 """
     generate_report(csga_score::CSGAScore, format::Symbol = :json) -> String
 
-Gera relatório em formato especificado (:json, :toml, :markdown)
+Gera relatório em formato especificado (:json, :toml, :markup)
 """
-function generate_report(csga_score::CSGAScore, format::Symbol = :json)::String
+function generate_report(csga_score::CSGAScore, format::Symbol=:json)::String
     if format == :json
-        return JSON3.write(csga_score, allow_inf = true)
-    elseif format == :markdown
+        return JSON3.write(csga_score, allow_inf=true)
+    elseif format == :markup
         return generate_markdown_report(csga_score)
     else
         throw(ArgumentError("Formato não suportado: $format"))
@@ -445,10 +562,10 @@ function generate_markdown_report(csga_score::CSGAScore)::String
     md = """
 # Relatório CSGA - $(csga_score.project_name)
 
-**Data**: $(csga_score.timestamp)  
-**Score Geral**: $(round(csga_score.overall_score, digits=1))/100  
-**Nível**: $(csga_score.maturity_level)  
-**Status**: $(csga_score.compliance_status)  
+**Data**: $(csga_score.timestamp)
+**Score Geral**: $(round(csga_score.overall_score, digits=1))/100
+**Nível**: $(csga_score.maturity_level)
+**Status**: $(csga_score.compliance_status)
 
 ## Resumo por Pilar
 

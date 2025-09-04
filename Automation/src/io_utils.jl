@@ -324,3 +324,37 @@ function safe_json_write(filepath::String, data::String)
         flush(file)
     end
 end
+
+# =============================================================================
+# UNIFIED PATH RESOLUTION
+# =============================================================================
+
+"""
+    resolve_project_path(test_path::String = pwd())
+
+Resolve o caminho correto do projeto independentemente do diretório atual.
+Se estivermos no diretório de testes, retorna o diretório pai (raiz do projeto).
+"""
+function resolve_project_path(test_path::String=pwd())
+    # Se o caminho fornecido é um diretório de testes, subir um nível
+    if basename(test_path) == "test"
+        return dirname(test_path)
+    end
+    
+    # Se o caminho fornecido já é o diretório do projeto, retorná-lo
+    if isfile(joinpath(test_path, "Project.toml"))
+        return test_path
+    end
+    
+    # Se não encontrou Project.toml no caminho atual, tentar subir níveis
+    current_path = test_path
+    while current_path != dirname(current_path)  # Enquanto não chegar à raiz
+        if isfile(joinpath(current_path, "Project.toml"))
+            return current_path
+        end
+        current_path = dirname(current_path)
+    end
+    
+    # Se não encontrou Project.toml em nenhum nível, retornar o caminho original
+    return test_path
+end

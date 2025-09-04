@@ -715,7 +715,13 @@ function benchmark_sorting_algorithms(sizes::Vector{Int}=[100, 1000, 10000])
 
         push!(results["quicksort"], time_quicksort)
         push!(results["builtin"], time_builtin)
-        push!(results["speedup"], time_builtin / time_quicksort)
+        # Proteção contra divisão por zero
+        speedup = if time_quicksort != 0
+            time_builtin / time_quicksort
+        else
+            1.0
+        end
+        push!(results["speedup"], speedup)
     end
 
     return results

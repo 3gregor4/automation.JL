@@ -50,7 +50,12 @@ function demonstrate_optimizations()
     quicksort_time = @belapsed AlgorithmOptimizations.optimized_quicksort!(copy($unsorted_data))
     builtin_time = @belapsed sort!(copy($unsorted_data))
 
-    algo_improvement = (builtin_time / quicksort_time - 1) * 100
+    # Proteção contra divisão por zero
+    algo_improvement = if quicksort_time != 0
+        (builtin_time / quicksort_time - 1) * 100
+    else
+        0.0
+    end
     println("   🔄 Optimized quicksort: $(round(quicksort_time * 1000, digits=2))ms")
     println("   📈 Algorithm speedup: +$(round(algo_improvement, digits=1))%")
 
@@ -65,7 +70,12 @@ function demonstrate_optimizations()
     memory_sum_time = @belapsed MemoryOptimization.zero_allocation_sum($data)
     builtin_sum_time = @belapsed sum($data)
 
-    memory_improvement = (builtin_sum_time / memory_sum_time - 1) * 100
+    # Proteção contra divisão por zero
+    memory_improvement = if memory_sum_time != 0
+        (builtin_sum_time / memory_sum_time - 1) * 100
+    else
+        0.0
+    end
     println("   💾 Zero-allocation sum: $(round(memory_sum_time * 1000, digits=2))ms")
     println("   📈 Memory efficiency gain: +$(round(memory_improvement, digits=1))%")
 
@@ -77,7 +87,12 @@ function demonstrate_optimizations()
     vectorized_time = @belapsed CPUEfficiency.auto_vectorize(+, $a, $b)
     manual_time = @belapsed [$a[i] + $b[i] for i in 1:length($a)]
 
-    cpu_improvement = (manual_time / vectorized_time - 1) * 100
+    # Proteção contra divisão por zero
+    cpu_improvement = if vectorized_time != 0
+        (manual_time / vectorized_time - 1) * 100
+    else
+        0.0
+    end
     println("   ⚡ Vectorized operations: $(round(vectorized_time * 1000, digits=2))ms")
     println("   📈 CPU efficiency gain: +$(round(cpu_improvement, digits=1))%")
 
@@ -88,7 +103,12 @@ function demonstrate_optimizations()
     cache_time = @belapsed CPUEfficiency.cache_friendly_transpose($matrix)
     builtin_time = @belapsed transpose($matrix)
 
-    cache_improvement = (builtin_time / cache_time - 1) * 100
+    # Proteção contra divisão por zero
+    cache_improvement = if cache_time != 0
+        (builtin_time / cache_time - 1) * 100
+    else
+        0.0
+    end
     println("   🚀 Cache-friendly transpose: $(round(cache_time * 1000, digits=2))ms")
     println("   📈 Cache optimization gain: +$(round(cache_improvement, digits=1))%")
 
@@ -118,7 +138,12 @@ function benchmark_suite()
         zero_alloc_time = @belapsed MemoryOptimization.zero_allocation_sum($data)
         builtin_time = @belapsed sum($data)
 
-        speedup = (builtin_time / zero_alloc_time - 1) * 100
+        # Proteção contra divisão por zero
+        speedup = if zero_alloc_time != 0
+            (builtin_time / zero_alloc_time - 1) * 100
+        else
+            0.0
+        end
         results["memory_$(size)"] = speedup
 
         println("   Size $(size): +$(round(speedup, digits=1))% speedup")
@@ -135,7 +160,12 @@ function benchmark_suite()
         opt_time = @belapsed AlgorithmOptimizations.optimized_quicksort!(copy($data))
         builtin_time = @belapsed sort!(copy($data))
 
-        speedup = (builtin_time / opt_time - 1) * 100
+        # Proteção contra divisão por zero
+        speedup = if opt_time != 0
+            (builtin_time / opt_time - 1) * 100
+        else
+            0.0
+        end
         results["sort_$(size)"] = speedup
 
         println("   Sort $(size): +$(round(speedup, digits=1))% speedup")
@@ -153,7 +183,12 @@ function benchmark_suite()
         vec_time = @belapsed CPUEfficiency.auto_vectorize(+, $a, $b)
         manual_time = @belapsed [$a[i] + $b[i] for i in 1:length($a)]
 
-        speedup = (manual_time / vec_time - 1) * 100
+        # Proteção contra divisão por zero
+        speedup = if vec_time != 0
+            (manual_time / vec_time - 1) * 100
+        else
+            0.0
+        end
         results["vectorize_$(size)"] = speedup
 
         println("   Vectorize $(size): +$(round(speedup, digits=1))% speedup")
@@ -230,7 +265,12 @@ function green_code_showcase()
         println("   ✅ $name: $(round(efficiency, digits=1))/100")
     end
 
-    code_efficiency_score = min(100.0, total_efficiency / length(efficiency_tests))
+    # Proteção contra divisão por zero
+    code_efficiency_score = if !isempty(efficiency_tests)
+        min(100.0, total_efficiency / length(efficiency_tests))
+    else
+        0.0
+    end
     showcase_results["code_efficiency"] = code_efficiency_score
     println("   📊 Code Efficiency Score: $(round(code_efficiency_score, digits=1))/100")
 
@@ -442,7 +482,12 @@ function memory_efficiency_demo()
     println("   Memory used: $(round(opt_memory_used/1e6, digits=2))MB")
 
     # Results comparison
-    memory_reduction = (naive_memory_used - opt_memory_used) / naive_memory_used * 100
+    # Proteção contra divisão por zero
+    memory_reduction = if naive_memory_used != 0
+        (naive_memory_used - opt_memory_used) / naive_memory_used * 100
+    else
+        0.0
+    end
 
     println("\n📊 MEMORY EFFICIENCY RESULTS:")
     println("   Naive approach: $(round(naive_memory_used/1e6, digits=2))MB")
@@ -485,7 +530,12 @@ function cpu_optimization_demo()
     # Vectorized approach
     vectorized_time = @belapsed CPUEfficiency.auto_vectorize(+, $a, $b)
 
-    vectorization_speedup = (standard_time / vectorized_time - 1) * 100
+    # Proteção contra divisão por zero
+    vectorization_speedup = if vectorized_time != 0
+        (standard_time / vectorized_time - 1) * 100
+    else
+        0.0
+    end
     println("   Standard loop: $(round(standard_time * 1000, digits=2))ms")
     println("   Vectorized: $(round(vectorized_time * 1000, digits=2))ms")
     println("   Speedup: +$(round(vectorization_speedup, digits=1))%")
@@ -514,7 +564,12 @@ function cpu_optimization_demo()
         count
     end
 
-    branch_speedup = (branchy_time / branchless_time - 1) * 100
+    # Proteção contra divisão por zero
+    branch_speedup = if branchless_time != 0
+        (branchy_time / branchless_time - 1) * 100
+    else
+        0.0
+    end
     println("   Branchy code: $(round(branchy_time * 1000, digits=2))ms")
     println("   Branchless: $(round(branchless_time * 1000, digits=2))ms")
     println("   Speedup: +$(round(branch_speedup, digits=1))%")
@@ -552,7 +607,12 @@ function cpu_optimization_demo()
         total
     end
 
-    cache_speedup = (cache_unfriendly_time / cache_friendly_time - 1) * 100
+    # Proteção contra divisão por zero
+    cache_speedup = if cache_friendly_time != 0
+        (cache_unfriendly_time / cache_friendly_time - 1) * 100
+    else
+        0.0
+    end
     println("   Cache-unfriendly: $(round(cache_unfriendly_time * 1000, digits=2))ms")
     println("   Cache-friendly: $(round(cache_friendly_time * 1000, digits=2))ms")
     println("   Speedup: +$(round(cache_speedup, digits=1))%")

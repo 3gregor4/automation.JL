@@ -30,7 +30,7 @@ mutable struct MemoryPool{T}
     total_created::Int
     max_size::Int
 
-    function MemoryPool{T}(max_size::Int = 1000) where {T}
+    function MemoryPool{T}(max_size::Int=1000) where {T}
         new{T}(T[], Set{T}(), 0, max_size)
     end
 end
@@ -84,11 +84,16 @@ Estatísticas do pool de memória
 """
 function pool_stats(pool::MemoryPool{T}) where {T}
     return (
-        available = length(pool.available),
-        in_use = length(pool.in_use),
-        total_created = pool.total_created,
-        max_size = pool.max_size,
-        utilization = length(pool.in_use) / pool.total_created,
+        available=length(pool.available),
+        in_use=length(pool.in_use),
+        total_created=pool.total_created,
+        max_size=pool.max_size,
+        # Proteção contra divisão por zero
+        utilization=if pool.total_created != 0
+            length(pool.in_use) / pool.total_created
+        else
+            0.0
+        end,
     )
 end
 
@@ -100,11 +105,11 @@ end
 Pool especializado para arrays com reutilização inteligente
 """
 mutable struct ArrayPool{T}
-    pools::Dict{Int, Vector{Vector{T}}}
+    pools::Dict{Int,Vector{Vector{T}}}
     max_arrays_per_size::Int
 
-    function ArrayPool{T}(max_arrays_per_size::Int = 50) where {T}
-        new{T}(Dict{Int, Vector{Vector{T}}}(), max_arrays_per_size)
+    function ArrayPool{T}(max_arrays_per_size::Int=50) where {T}
+        new{T}(Dict{Int,Vector{Vector{T}}}(), max_arrays_per_size)
     end
 end
 
@@ -178,7 +183,7 @@ struct CacheAwareArray{T}
     cols::Int
     block_size::Int
 
-    function CacheAwareArray{T}(rows::Int, cols::Int, block_size::Int = 64) where {T}
+    function CacheAwareArray{T}(rows::Int, cols::Int, block_size::Int=64) where {T}
         data = Vector{T}(undef, rows * cols)
         new{T}(data, rows, cols, block_size)
     end
@@ -294,7 +299,7 @@ export in_place_sort!, in_place_reverse!, preallocated_buffer_ops
 
 Soma sem alocações usando @inbounds e @simd
 """
-function zero_alloc_sum(arr::AbstractVector{T}) where {T <: Number}
+function zero_alloc_sum(arr::AbstractVector{T}) where {T<:Number}
     result = zero(T)
     @inbounds @simd for i in eachindex(arr)
         result += arr[i]
@@ -307,10 +312,17 @@ end
 
 Média sem alocações
 """
-function zero_alloc_mean(arr::AbstractVector{T}) where {T <: Real}
+function zero_alloc_mean(arr::AbstractVector{T}) where {T<:Real}
     n = length(arr)
-    n == 0 && return zero(T) / one(T)  # Return NaN for empty array
-    return zero_alloc_sum(arr) / T(n)
+    # Proteção contra divisão por zero
+    if n == 0
+        return zero(T) / one(T)  # Return NaN for empty array
+    end
+    return if T(n) != zero(T)
+        zero_alloc_sum(arr) / T(n)
+    else
+        zero(T)
+    end
 end
 
 """
@@ -318,7 +330,7 @@ end
 
 Variância sem alocações com média pré-calculada
 """
-function zero_alloc_variance(arr::AbstractVector{T}, mean_val::T) where {T <: Real}
+function zero_alloc_variance(arr::AbstractVector{T}, mean_val::T) where {T<:Real}
     n = length(arr)
     n <= 1 && return zero(T)
 
@@ -328,7 +340,12 @@ function zero_alloc_variance(arr::AbstractVector{T}, mean_val::T) where {T <: Re
         sum_sq_diff += diff * diff
     end
 
-    return sum_sq_diff / T(n - 1)
+    # Proteção contra divisão por zero
+    return if T(n - 1) != zero(T)
+        sum_sq_diff / T(n - 1)
+    else
+        zero(T)
+    end
 end
 
 """
@@ -336,7 +353,7 @@ end
 
 Ordenação in-place sem alocações adicionais
 """
-function in_place_sort!(arr::AbstractVector{T}, algorithm::Symbol = :quicksort) where {T}
+function in_place_sort!(arr::AbstractVector{T}, algorithm::Symbol=:quicksort) where {T}
     if algorithm == :quicksort
         quicksort_inplace!(arr, 1, length(arr))
     elseif algorithm == :heapsort
@@ -386,26 +403,26 @@ function partition_inplace!(arr::AbstractVector{T}, low::Int, high::Int) where {
     @inbounds pivot = arr[high]
 
     i = low - 1
-    @inbounds for j in low:(high - 1)
+    @inbounds for j in low:(high-1)
         if arr[j] <= pivot
             i += 1
             arr[i], arr[j] = arr[j], arr[i]
         end
     end
 
-    @inbounds arr[i + 1], arr[high] = arr[high], arr[i + 1]
+    @inbounds arr[i+1], arr[high] = arr[high], arr[i+1]
     return i + 1
 end
 
 function insertion_sort_inplace!(arr::AbstractVector{T}, low::Int, high::Int) where {T}
-    @inbounds for i in (low + 1):high
+    @inbounds for i in (low+1):high
         key = arr[i]
         j = i - 1
         while j >= low && arr[j] > key
-            arr[j + 1] = arr[j]
+            arr[j+1] = arr[j]
             j -= 1
         end
-        arr[j + 1] = key
+        arr[j+1] = key
     end
 end
 
@@ -413,7 +430,7 @@ function heapsort_inplace!(arr::AbstractVector{T}) where {T}
     n = length(arr)
 
     # Build max heap
-    @inbounds for i in (n ÷ 2):-1:1
+    @inbounds for i in (n÷2):-1:1
         heapify_down!(arr, i, n)
     end
 
@@ -433,7 +450,7 @@ function heapify_down!(arr::AbstractVector{T}, start::Int, end_idx::Int) where {
             swap_idx = child
         end
 
-        if child + 1 <= end_idx && arr[swap_idx] < arr[child + 1]
+        if child + 1 <= end_idx && arr[swap_idx] < arr[child+1]
             swap_idx = child + 1
         end
 
@@ -504,7 +521,12 @@ macro memory_profile(expr)
         @printf "  Execution time: %.2f ms\n" execution_time
         @printf "  Memory used: %.2f KB\n" memory_used / 1024
         @printf "  Allocations: %d\n" allocations
-        @printf "  Memory rate: %.2f KB/ms\n" (memory_used / 1024) / execution_time
+        # Proteção contra divisão por zero
+        if execution_time != 0
+            @printf "  Memory rate: %.2f KB/ms\n" (memory_used / 1024) / execution_time
+        else
+            @printf "  Memory rate: 0.00 KB/ms\n"
+        end
 
         result
     end
@@ -515,7 +537,7 @@ end
 
 Profila memória de uma função com múltiplas iterações
 """
-function profile_function_memory(f::Function, args...; iterations::Int = 100)
+function profile_function_memory(f::Function, args...; iterations::Int=100)
     # Warmup
     f(args...)
 
@@ -537,13 +559,37 @@ function profile_function_memory(f::Function, args...; iterations::Int = 100)
         push!(time_samples, (end_time - start_time) / 1e6)
     end
 
+    # Proteção contra divisão por zero
+    total_time = sum(time_samples)
+    memory_efficiency = if total_time != 0
+        sum(memory_samples) / total_time  # bytes/ns
+    else
+        0.0
+    end
+
     return (
-        avg_memory_kb = sum(memory_samples) / (iterations * 1024),
-        max_memory_kb = maximum(memory_samples) / 1024,
-        min_memory_kb = minimum(memory_samples) / 1024,
-        avg_time_ms = sum(time_samples) / iterations,
-        memory_efficiency = sum(memory_samples) / sum(time_samples),  # bytes/ns
-        samples = (memory = memory_samples, time = time_samples),
+        avg_memory_kb=if iterations > 0
+            sum(memory_samples) / (iterations * 1024)
+        else
+            0.0
+        end,
+        max_memory_kb=if !isempty(memory_samples)
+            maximum(memory_samples) / 1024
+        else
+            0.0
+        end,
+        min_memory_kb=if !isempty(memory_samples)
+            minimum(memory_samples) / 1024
+        else
+            0.0
+        end,
+        avg_time_ms=if iterations > 0
+            sum(time_samples) / iterations
+        else
+            0.0
+        end,
+        memory_efficiency=memory_efficiency,
+        samples=(memory=memory_samples, time=time_samples),
     )
 end
 
@@ -556,13 +602,18 @@ function memory_snapshot()
     gc_stats = Base.gc_num()
 
     return (
-        timestamp = time_ns(),
-        live_bytes = Base.gc_live_bytes(),
-        total_allocated = gc_stats.allocd,
-        gc_collections = gc_stats.total_time,
-        free_memory = Sys.free_memory(),
-        total_memory = Sys.total_memory(),
-        memory_pressure = 1.0 - (Sys.free_memory() / Sys.total_memory()),
+        timestamp=time_ns(),
+        live_bytes=Base.gc_live_bytes(),
+        total_allocated=gc_stats.allocd,
+        gc_collections=gc_stats.total_time,
+        free_memory=Sys.free_memory(),
+        total_memory=Sys.total_memory(),
+        # Proteção contra divisão por zero
+        memory_pressure=if Sys.total_memory() != 0
+            1.0 - (Sys.free_memory() / Sys.total_memory())
+        else
+            0.0
+        end,
     )
 end
 
@@ -571,7 +622,7 @@ end
 
 Tracker de alocações que detecta picos de memória
 """
-function allocation_tracker(threshold_kb::Real = 1.0)
+function allocation_tracker(threshold_kb::Real=1.0)
     threshold_bytes = threshold_kb * 1024
     snapshots = []
 
@@ -586,10 +637,15 @@ function allocation_tracker(threshold_kb::Real = 1.0)
             push!(
                 snapshots,
                 (
-                    name = name,
-                    allocation_kb = allocation / 1024,
-                    timestamp = final_snapshot.timestamp,
-                    memory_pressure = final_snapshot.memory_pressure,
+                    name=name,
+                    # Proteção contra divisão por zero
+                    allocation_kb=if 1024 != 0
+                        allocation / 1024
+                    else
+                        0.0
+                    end,
+                    timestamp=final_snapshot.timestamp,
+                    memory_pressure=final_snapshot.memory_pressure,
                 ),
             )
 
@@ -603,7 +659,7 @@ function allocation_tracker(threshold_kb::Real = 1.0)
         return snapshots
     end
 
-    return (track = track_allocation, report = get_report)
+    return (track=track_allocation, report=get_report)
 end
 
 """
@@ -611,7 +667,7 @@ end
 
 Monitor de pressão de GC durante período específico
 """
-function gc_pressure_monitor(interval_seconds::Real = 1.0, duration_seconds::Real = 60.0)
+function gc_pressure_monitor(interval_seconds::Real=1.0, duration_seconds::Real=60.0)
     measurements = []
     start_time = time()
 
@@ -672,8 +728,8 @@ end
 Configura parâmetros otimais de GC para performance
 """
 function configure_gc_params(;
-    max_heap_size_mb::Int = 512,
-    gc_threshold_ratio::Float64 = 0.1,
+    max_heap_size_mb::Int=512,
+    gc_threshold_ratio::Float64=0.1,
 )
     # Set GC heuristics (Julia implementation specific)
     max_heap_bytes = max_heap_size_mb * 1024 * 1024
@@ -681,9 +737,9 @@ function configure_gc_params(;
     @info "GC Configuration:" max_heap_size_mb gc_threshold_ratio
 
     return (
-        max_heap = max_heap_bytes,
-        threshold_ratio = gc_threshold_ratio,
-        recommended_pool_size = max_heap_bytes ÷ 10,
+        max_heap=max_heap_bytes,
+        threshold_ratio=gc_threshold_ratio,
+        recommended_pool_size=max_heap_bytes ÷ 10,
     )
 end
 
@@ -712,10 +768,15 @@ end
 
 Trigger inteligente de GC baseado em pressão de memória
 """
-function smart_gc_trigger(memory_threshold::Float64 = 0.8)
+function smart_gc_trigger(memory_threshold::Float64=0.8)
     current_memory = Sys.free_memory()
     total_memory = Sys.total_memory()
-    memory_usage = 1.0 - (current_memory / total_memory)
+    # Proteção contra divisão por zero
+    memory_usage = if total_memory != 0
+        1.0 - (current_memory / total_memory)
+    else
+        0.0
+    end
 
     if memory_usage > memory_threshold
         @info "Triggering GC: Memory usage at $(round(memory_usage * 100, digits=1))%"

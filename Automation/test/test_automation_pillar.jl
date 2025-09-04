@@ -23,13 +23,9 @@ using Automation
     # ==========================================================================
     @testset "🔄 CI/CD Integration Score" begin
         @testset "Makefile Automation" begin
-            # Determinar o caminho correto do projeto
-            current_dir = pwd()
-            project_path = current_dir
-            # Se estivermos no diretório test, subir um nível
-            if basename(current_dir) == "test"
-                project_path = dirname(current_dir)
-            end
+            # Usar a função unificada para resolver o caminho do projeto
+            project_path = Automation.resolve_project_path(pwd())
+            println("   📁 Caminho do projeto: $project_path")
 
             makefile_path = joinpath(project_path, "Makefile")
             @test isfile(makefile_path) == true
@@ -65,13 +61,9 @@ using Automation
         end
 
         @testset "AGENTS.md Integration" begin
-            # Determinar o caminho correto do projeto
-            current_dir = pwd()
-            project_path = current_dir
-            # Se estivermos no diretório test, subir um nível
-            if basename(current_dir) == "test"
-                project_path = dirname(current_dir)
-            end
+            # Usar a função unificada para resolver o caminho do projeto
+            project_path = Automation.resolve_project_path(pwd())
+            println("   📁 Caminho do projeto: $project_path")
 
             agents_file = joinpath(project_path, "AGENTS.md")
             @test isfile(agents_file) == true
@@ -114,13 +106,9 @@ using Automation
 
         @testset "Project Configuration" begin
             # Verificar configurações que facilitam CI/CD
-            # Determinar o caminho correto do projeto
-            current_dir = pwd()
-            project_path = current_dir
-            # Se estivermos no diretório test, subir um nível
-            if basename(current_dir) == "test"
-                project_path = dirname(current_dir)
-            end
+            # Usar a função unificada para resolver o caminho do projeto
+            project_path = Automation.resolve_project_path(pwd())
+            println("   📁 Caminho do projeto: $project_path")
 
             @test isfile(joinpath(project_path, "Project.toml")) == true
             @test isfile(joinpath(project_path, "Manifest.toml")) == true
@@ -135,13 +123,9 @@ using Automation
         end
 
         @testset "CI/CD Integration Score Calculation" begin
-            # Determinar o caminho correto do projeto
-            current_dir = pwd()
-            project_path = current_dir
-            # Se estivermos no diretório test, subir um nível
-            if basename(current_dir) == "test"
-                project_path = dirname(current_dir)
-            end
+            # Usar a função unificada para resolver o caminho do projeto
+            project_path = Automation.resolve_project_path(pwd())
+            println("   📁 Caminho do projeto: $project_path")
 
             score = Automation.CSGAScoring.evaluate_cicd_integration(project_path)
             @test score >= 70.0
@@ -156,13 +140,9 @@ using Automation
     # ==========================================================================
     @testset "🧪 Testing Automation Score - OTIMIZAÇÃO PRINCIPAL" begin
         @testset "Test Structure Excellence" begin
-            # Determinar o caminho correto do projeto
-            current_dir = pwd()
-            project_path = current_dir
-            # Se estivermos no diretório test, subir um nível
-            if basename(current_dir) == "test"
-                project_path = dirname(current_dir)
-            end
+            # Usar a função unificada para resolver o caminho do projeto
+            project_path = Automation.resolve_project_path(pwd())
+            println("   📁 Caminho do projeto: $project_path")
 
             test_dir = joinpath(project_path, "test")
             @test isdir(test_dir) == true
@@ -208,13 +188,9 @@ using Automation
         @testset "Test Coverage & Quality" begin
             # Análise qualitativa dos testes existentes
 
-            # Determinar o caminho correto do projeto
-            current_dir = pwd()
-            project_path = current_dir
-            # Se estivermos no diretório test, subir um nível
-            if basename(current_dir) == "test"
-                project_path = dirname(current_dir)
-            end
+            # Usar a função unificada para resolver o caminho do projeto
+            project_path = Automation.resolve_project_path(pwd())
+            println("   📁 Caminho do projeto: $project_path")
 
             test_files = []
             for (root, dirs, files) in walkdir(joinpath(project_path, "test"))
@@ -266,13 +242,9 @@ using Automation
 
             # Teste de execução da avaliação CSGA
             @testset "CSGA Evaluation Integration" begin
-                # Determinar o caminho correto do projeto
-                current_dir = pwd()
-                project_path = current_dir
-                # Se estivermos no diretório test, subir um nível
-                if basename(current_dir) == "test"
-                    project_path = dirname(current_dir)
-                end
+                # Usar a função unificada para resolver o caminho do projeto
+                project_path = Automation.resolve_project_path(pwd())
+                println("   📁 Caminho do projeto: $project_path")
 
                 score = Automation.evaluate_project(project_path)
 
