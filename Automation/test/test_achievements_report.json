@@ -1,18 +1,18 @@
 {
-    "maturity_level": "Expert",
-    "expert_achieved": true,
-    "overall_score": 94.3,
+    "maturity_level": "Iniciante",
+    "expert_achieved": false,
+    "overall_score": 22.2,
     "pillar_scores": {
-        "clean_code": 98.1,
-        "automation": 93.8,
-        "green_code": 84.3,
-        "security": 98.1
+        "clean_code": 28.1,
+        "automation": 0,
+        "green_code": 38.5,
+        "security": 24.9
     },
     "key_metrics": {
-        "testing_automation": 100,
-        "package_security": 94.1,
-        "performance_efficiency": 75
+        "testing_automation": 0,
+        "package_security": 0,
+        "performance_efficiency": 0
     },
-    "timestamp": "2025-09-03T20:24:19.058",
-    "testing_automation_optimized": true
+    "timestamp": "2025-09-04T14:23:46.815",
+    "testing_automation_optimized": false
 }

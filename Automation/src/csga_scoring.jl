@@ -29,7 +29,7 @@ struct PillarScore
     name::String
     score::Float64          # 0-100
     weight::Float64         # Peso do pilar (0-1)
-    metrics::Dict{String, Float64}
+    metrics::Dict{String,Float64}
     recommendations::Vector{String}
     critical_issues::Vector{String}
 end
@@ -56,7 +56,7 @@ end
 # =============================================================================
 
 function evaluate_security_pillar(project_path::String)::PillarScore
-    metrics = Dict{String, Float64}()
+    metrics = Dict{String,Float64}()
     recommendations = String[]
     critical_issues = String[]
 
@@ -69,7 +69,7 @@ function evaluate_security_pillar(project_path::String)::PillarScore
         push!(recommendations, "Migrar para pacotes oficiais JuliaLang apenas")
     end
 
-    # 2. Code Security Score (25 pontos)  
+    # 2. Code Security Score (25 pontos)
     code_security_score = evaluate_code_security(project_path)
     metrics["code_security"] = code_security_score
 
@@ -234,9 +234,9 @@ function evaluate_code_security(project_path::String)::Float64
                 end
             end
 
-            # Force garbage collection for large files
+            # Remover garbage collection forçado para melhorar performance
             if length(content) > 100_000  # 100KB threshold
-                GC.gc()
+                @debug "Processando arquivo grande: $(length(content)) bytes"
             end
 
         catch e
@@ -245,7 +245,8 @@ function evaluate_code_security(project_path::String)::Float64
         end
     end
 
-    if total_lines == 0
+    # Proteção robusta contra divisão por zero
+    if total_lines <= 0
         return 50.0
     end
 

@@ -4,7 +4,7 @@ Implementa padrões de alta performance para otimização do pilar Green Code
 
 Funcionalidades:
 - Type-stable functions
-- Memory-efficient algorithms  
+- Memory-efficient algorithms
 - Loop optimizations
 - SIMD operations
 - Performance utilities
@@ -34,7 +34,7 @@ export type_stable_filter, type_stable_map, type_stable_reduce
 
 Soma type-stable para máxima performance
 """
-function inferred_sum(x::AbstractVector{T}) where {T <: Number}
+function inferred_sum(x::AbstractVector{T}) where {T<:Number}
     result = zero(T)
     @inbounds for i in eachindex(x)
         result += x[i]
@@ -47,7 +47,7 @@ end
 
 Média type-stable com otimização de divisão
 """
-function inferred_mean(x::AbstractVector{T}) where {T <: Real}
+function inferred_mean(x::AbstractVector{T}) where {T<:Real}
     n = length(x)
     n == 0 && return zero(T)
     return inferred_sum(x) / T(n)
@@ -58,7 +58,7 @@ end
 
 Máximo type-stable com early termination
 """
-function inferred_maximum(x::AbstractVector{T}) where {T <: Real}
+function inferred_maximum(x::AbstractVector{T}) where {T<:Real}
     isempty(x) && throw(ArgumentError("collection must be non-empty"))
     result = first(x)
     @inbounds for i in 2:length(x)
@@ -244,15 +244,15 @@ function unrolled_loop(data::AbstractVector{T}, factor::T) where {T}
     unroll_factor = 4
     full_iterations = n ÷ unroll_factor
 
-    @inbounds for i in 1:unroll_factor:(full_iterations * unroll_factor)
+    @inbounds for i in 1:unroll_factor:(full_iterations*unroll_factor)
         result[i] = data[i] * factor
-        result[i + 1] = data[i + 1] * factor
-        result[i + 2] = data[i + 2] * factor
-        result[i + 3] = data[i + 3] * factor
+        result[i+1] = data[i+1] * factor
+        result[i+2] = data[i+2] * factor
+        result[i+3] = data[i+3] * factor
     end
 
     # Handle remaining elements
-    @inbounds for i in (full_iterations * unroll_factor + 1):n
+    @inbounds for i in (full_iterations*unroll_factor+1):n
         result[i] = data[i] * factor
     end
 
@@ -363,7 +363,7 @@ export simd_reduction, simd_comparison
 
 Soma SIMD otimizada para máxima throughput
 """
-function simd_sum(x::AbstractVector{T}) where {T <: Number}
+function simd_sum(x::AbstractVector{T}) where {T<:Number}
     result = zero(T)
     @inbounds @simd for val in x
         result += val
@@ -376,7 +376,7 @@ end
 
 Produto escalar SIMD otimizado
 """
-function simd_dot_product(a::AbstractVector{T}, b::AbstractVector{T}) where {T <: Number}
+function simd_dot_product(a::AbstractVector{T}, b::AbstractVector{T}) where {T<:Number}
     n = min(length(a), length(b))
     result = zero(T)
 
@@ -475,17 +475,19 @@ end
 Profile de uso de memória para uma função
 """
 function profile_memory_usage(func::Function)
-    GC.gc()  # Force cleanup before measurement
+    # Remover GC forçado para melhorar performance
+    @debug "Iniciando profile de memória"
     initial_memory = Base.gc_live_bytes()
 
     result = func()
 
-    GC.gc()  # Force cleanup after execution
+    # Remover GC forçado para melhorar performance
+    @debug "Finalizando profile de memória"
     final_memory = Base.gc_live_bytes()
 
     memory_used = final_memory - initial_memory
 
-    return (result = result, memory_bytes = memory_used)
+    return (result=result, memory_bytes=memory_used)
 end
 
 """
@@ -510,7 +512,7 @@ function cache_size_detection()
         push!(times, (end_time - start_time) / 1e6)
     end
 
-    return (sizes = sizes, times = times)
+    return (sizes=sizes, times=times)
 end
 
 """
@@ -550,10 +552,10 @@ function performance_regression_test(
     speedup = baseline_median / optimized_median
 
     return (
-        baseline_median_ns = baseline_median,
-        optimized_median_ns = optimized_median,
-        speedup = speedup,
-        improvement_percent = (speedup - 1.0) * 100.0,
+        baseline_median_ns=baseline_median,
+        optimized_median_ns=optimized_median,
+        speedup=speedup,
+        improvement_percent=(speedup - 1.0) * 100.0,
     )
 end
 

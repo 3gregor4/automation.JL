@@ -35,7 +35,7 @@ mutable struct MemoryPool{T}
     function MemoryPool{T}(
         size::Int,
         create_fn::Function,
-        reset_fn::Function = identity,
+        reset_fn::Function=identity,
     ) where {T}
         objects = Vector{T}(undef, size)
         available = fill(true, size)
@@ -99,13 +99,13 @@ Pool genérico para tipos comuns
 mutable struct ObjectPool
     vectors::MemoryPool{Vector{Float64}}
     matrices::MemoryPool{Matrix{Float64}}
-    dicts::MemoryPool{Dict{String, Any}}
+    dicts::MemoryPool{Dict{String,Any}}
 
-    function ObjectPool(size::Int = 100)
+    function ObjectPool(size::Int=100)
         vectors = MemoryPool{Vector{Float64}}(size, () -> Float64[], empty!)
         matrices =
             MemoryPool{Matrix{Float64}}(size, () -> zeros(10, 10), (m) -> fill!(m, 0.0))
-        dicts = MemoryPool{Dict{String, Any}}(size, () -> Dict{String, Any}(), empty!)
+        dicts = MemoryPool{Dict{String,Any}}(size, () -> Dict{String,Any}(), empty!)
         new(vectors, matrices, dicts)
     end
 end
@@ -118,7 +118,7 @@ const DEFAULT_POOL = ObjectPool()
 
 Obtém vetor do pool
 """
-get_vector(pool::ObjectPool = DEFAULT_POOL) = allocate!(pool.vectors)
+get_vector(pool::ObjectPool=DEFAULT_POOL) = allocate!(pool.vectors)
 
 """
     return_vector!(pool::ObjectPool, vec::Vector{Float64})
@@ -132,7 +132,7 @@ return_vector!(pool::ObjectPool, vec::Vector{Float64}) = deallocate!(pool.vector
 
 Executa operação com vetor do pool
 """
-function with_pooled_vector(operation::Function, pool::ObjectPool = DEFAULT_POOL)
+function with_pooled_vector(operation::Function, pool::ObjectPool=DEFAULT_POOL)
     vec = get_vector(pool)
     if vec === nothing
         # Fallback para alocação normal se pool esgotado
@@ -158,10 +158,10 @@ Detector de vazamentos de memória
 """
 mutable struct LeakDetector
     initial_memory::UInt64
-    snapshots::Vector{Tuple{DateTime, UInt64}}
+    snapshots::Vector{Tuple{DateTime,UInt64}}
     threshold_mb::Float64
 
-    LeakDetector(threshold_mb::Float64 = 50.0) = new(Base.gc_live_bytes(), [], threshold_mb)
+    LeakDetector(threshold_mb::Float64=50.0) = new(Base.gc_live_bytes(), [], threshold_mb)
 end
 
 """
@@ -187,11 +187,11 @@ function detect_leaks!(detector::LeakDetector)
     end
 
     # Analisa últimas 3 medições
-    recent = detector.snapshots[(end - 2):end]
+    recent = detector.snapshots[(end-2):end]
     memories = [snapshot[2] for snapshot in recent]
 
     # Verifica crescimento sustentado
-    growth_rates = [memories[i + 1] - memories[i] for i in 1:(length(memories) - 1)]
+    growth_rates = [memories[i+1] - memories[i] for i in 1:(length(memories)-1)]
     avg_growth = mean(growth_rates)
 
     # Converte para MB
@@ -214,7 +214,7 @@ mutable struct MemoryMonitor
     current_usage_mb::Float64
     warnings::Vector{String}
 
-    MemoryMonitor(max_mb::Float64 = 1000.0) = new(max_mb, 0.0, String[])
+    MemoryMonitor(max_mb::Float64=1000.0) = new(max_mb, 0.0, String[])
 end
 
 """
@@ -241,14 +241,15 @@ end
 
 Executa operação com limite de memória
 """
-function with_memory_limit(operation::Function, max_mb::Float64 = 500.0)
+function with_memory_limit(operation::Function, max_mb::Float64=500.0)
     monitor = MemoryMonitor(max_mb)
 
     try
         result = operation()
 
         if !check_memory!(monitor)
-            GC.gc()  # Força garbage collection se limite excedido
+            # Substituir GC forçado por sugestão de otimização
+            @warn "Limite de memória excedido. Considere otimizar a operação."
         end
 
         return result
@@ -278,10 +279,9 @@ function chunked_processing(
         end_idx = min(i + chunk_size - 1, length(data))
         chunk = @view data[i:end_idx]
 
-        with_gc_cleanup() do
-            chunk_result = process_fn(chunk)
-            push!(results, chunk_result)
-        end
+        # Remover GC forçado para melhorar performance
+        chunk_result = process_fn(chunk)
+        push!(results, chunk_result)
     end
 
     return results
@@ -295,7 +295,7 @@ Map eficiente em memória usando processamento em chunks
 function memory_efficient_map(
     f::Function,
     data::Vector{T},
-    chunk_size::Int = 1000,
+    chunk_size::Int=1000,
 ) where {T}
     result_type = typeof(f(first(data)))
     results = Vector{result_type}()
@@ -304,9 +304,8 @@ function memory_efficient_map(
         end_idx = min(i + chunk_size - 1, length(data))
         chunk = @view data[i:end_idx]
 
-        chunk_results = with_gc_cleanup() do
-            map(f, chunk)
-        end
+        # Remover GC forçado para melhorar performance
+        chunk_results = map(f, chunk)
 
         append!(results, chunk_results)
     end
@@ -323,7 +322,7 @@ end
 
 Otimiza garbage collection para operação específica
 """
-function optimize_gc_for_operation(operation::Function, gc_threshold::Float64 = 0.1)
+function optimize_gc_for_operation(operation::Function, gc_threshold::Float64=0.1)
     # Salva configuração atual
     original_gc_percent = GC.gc_percent()
 
@@ -336,8 +335,8 @@ function optimize_gc_for_operation(operation::Function, gc_threshold::Float64 = 
         # Restaura configuração original
         GC.gc_percent(original_gc_percent)
 
-        # Garbage collection final
-        GC.gc()
+        # Remover garbage collection forçado para melhorar performance
+        @debug "Restaurando configuração original de GC"
     end
 end
 
@@ -350,6 +349,7 @@ function with_gc_cleanup(operation::Function)
     try
         return operation()
     finally
-        GC.gc()
+        # Remover GC forçado para melhorar performance
+        @debug "Operação concluída sem GC forçado"
     end
 end

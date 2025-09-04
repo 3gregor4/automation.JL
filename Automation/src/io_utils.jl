@@ -48,7 +48,7 @@ end
 
 Lê arquivo em chunks para evitar uso excessivo de memória
 """
-function buffered_file_read(filepath::String, buffer_size::Int = 8192)
+function buffered_file_read(filepath::String, buffer_size::Int=8192)
     content_parts = String[]
 
     safe_file_operation(filepath, "r") do file
@@ -56,9 +56,10 @@ function buffered_file_read(filepath::String, buffer_size::Int = 8192)
             chunk = read(file, buffer_size)
             push!(content_parts, String(chunk))
 
-            # Garbage collection periódico para chunks grandes
+            # Remover GC forçado para melhorar performance
+            # Substituir por monitoramento de uso de memória
             if length(content_parts) % 100 == 0
-                GC.gc()
+                @debug "Processando chunk $length(content_parts) de leitura"
             end
         end
     end
@@ -71,14 +72,14 @@ end
 
 Escreve arquivo em chunks para otimizar memória
 """
-function buffered_file_write(filepath::String, content::String, buffer_size::Int = 8192)
+function buffered_file_write(filepath::String, content::String, buffer_size::Int=8192)
     safe_file_operation(filepath, "w") do file
         content_length = length(content)
         written = 0
 
         while written < content_length
             end_pos = min(written + buffer_size, content_length)
-            chunk = content[(written + 1):end_pos]
+            chunk = content[(written+1):end_pos]
             write(file, chunk)
             written = end_pos
 
@@ -104,11 +105,11 @@ Processador de arquivos em lotes para otimização de recursos
 mutable struct BatchFileProcessor
     batch_size::Int
     processed_files::Vector{String}
-    failed_files::Vector{Tuple{String, Exception}}
+    failed_files::Vector{Tuple{String,Exception}}
     memory_limit_mb::Float64
 
-    BatchFileProcessor(batch_size::Int = 10, memory_limit_mb::Float64 = 200.0) =
-        new(batch_size, String[], Tuple{String, Exception}[], memory_limit_mb)
+    BatchFileProcessor(batch_size::Int=10, memory_limit_mb::Float64=200.0) =
+        new(batch_size, String[], Tuple{String,Exception}[], memory_limit_mb)
 end
 
 """
@@ -147,8 +148,8 @@ function process_files_batch(
 
         append!(results, batch_results)
 
-        # Garbage collection between batches
-        GC.gc()
+        # Remover GC forçado entre batches para melhorar performance
+        @debug "Processamento de batch concluído"
     end
 
     return results
@@ -164,12 +165,12 @@ end
 Gerenciador de recursos de arquivos com tracking
 """
 mutable struct FileResourceManager
-    open_files::Dict{String, IO}
-    file_access_times::Dict{String, DateTime}
+    open_files::Dict{String,IO}
+    file_access_times::Dict{String,DateTime}
     max_open_files::Int
 
-    FileResourceManager(max_open_files::Int = 50) =
-        new(Dict{String, IO}(), Dict{String, DateTime}(), max_open_files)
+    FileResourceManager(max_open_files::Int=50) =
+        new(Dict{String,IO}(), Dict{String,DateTime}(), max_open_files)
 end
 
 """
@@ -177,7 +178,7 @@ end
 
 Obtém handle de arquivo com gestão de recursos
 """
-function get_file_handle(manager::FileResourceManager, filepath::String, mode::String = "r")
+function get_file_handle(manager::FileResourceManager, filepath::String, mode::String="r")
     # Check if file is already open
     if haskey(manager.open_files, filepath)
         manager.file_access_times[filepath] = now()
@@ -266,7 +267,7 @@ end
 
 Lê CSV com gestão de memória otimizada
 """
-function safe_csv_read(filepath::String; chunk_size::Int = 10000)
+function safe_csv_read(filepath::String; chunk_size::Int=10000)
     # This would integrate with CSV.jl if available
     lines = String[]
 

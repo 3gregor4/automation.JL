@@ -385,8 +385,8 @@ function analyze_project_optimized(project_path::String=".")
             end
         end
 
-        # Garbage collection entre chunks
-        GC.gc()
+        # Remover GC forçado entre chunks para melhorar performance
+        @debug "Processamento de chunk concluído: $chunk_start-$chunk_end"
     end
 
     println("\n✅ Análise otimizada concluída!")

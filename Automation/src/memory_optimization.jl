@@ -61,8 +61,8 @@ function acquire!(pool::MemoryPool{T}) where {T}
         pool.miss_count += 1
         return obj
     else
-        # Force garbage collection and retry once
-        GC.gc()
+        # Remover garbage collection forçado para melhorar performance
+        @debug "Tentando novamente após falha no pool"
         if !isempty(pool.available)
             obj = pop!(pool.available)
             push!(pool.in_use, obj)
@@ -106,7 +106,8 @@ Limpa pool e força garbage collection
 function clear_pool!(pool::MemoryPool{T}) where {T}
     empty!(pool.available)
     empty!(pool.in_use)
-    GC.gc()
+    # Remover garbage collection forçado para melhorar performance
+    @debug "Pool limpo sem GC forçado"
 end
 
 # =============================================================================
@@ -404,7 +405,8 @@ function gc_optimization_settings(workload_type::Symbol=:balanced)
         @printf "GC optimized for real-time workload\n"
     else
         # Configuração balanceada
-        GC.gc()  # Standard GC
+        # Remover garbage collection forçado para melhorar performance
+        @debug "GC otimizado para workload balanceado"
         @printf "GC optimized for balanced workload\n"
     end
 end
@@ -456,7 +458,8 @@ function memory_benchmark(sizes::Vector{Int}=[1000, 10000, 100000])
 
     for size in sizes
         # Benchmark array pooling
-        GC.gc()  # Clean start
+        # Remover garbage collection forçado para melhorar performance
+        @debug "Iniciando benchmark com pool limpo"
         start_memory = Base.gc_live_bytes()
 
         # Test with pool
@@ -472,7 +475,8 @@ function memory_benchmark(sizes::Vector{Int}=[1000, 10000, 100000])
         pool_memory = Base.gc_live_bytes() - start_memory
 
         # Test without pool
-        GC.gc()  # Clean start
+        # Remover garbage collection forçado para melhorar performance
+        @debug "Iniciando benchmark sem pool"
         start_memory = Base.gc_live_bytes()
 
         no_pool_time = @elapsed begin
@@ -661,8 +665,8 @@ function acquire_scalable!(pool::ScalableMemoryPool{T}) where {T}
             pool.miss_count += 1
             return obj
         catch
-            # If creation fails, force garbage collection and retry
-            GC.gc()
+            # Remover garbage collection forçado para melhorar performance
+            @debug "Tentando novamente após falha na criação do objeto"
             if !isempty(pool.available)
                 obj = pop!(pool.available)
                 push!(pool.in_use, obj)
@@ -673,8 +677,8 @@ function acquire_scalable!(pool::ScalableMemoryPool{T}) where {T}
             end
         end
     else
-        # Pool at maximum capacity, force garbage collection and try to reclaim
-        GC.gc()
+        # Remover garbage collection forçado para melhorar performance
+        @debug "Tentando recuperar objetos do pool cheio"
         if !isempty(pool.available)
             obj = pop!(pool.available)
             push!(pool.in_use, obj)

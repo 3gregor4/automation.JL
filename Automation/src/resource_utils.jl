@@ -23,9 +23,9 @@ export @with_cleanup, safe_operation, ResourceTracker, track_resource, cleanup_a
 Rastreador global de recursos para prevenção de vazamentos
 """
 mutable struct ResourceTracker
-    active_resources::Dict{String, Any}
-    cleanup_functions::Dict{String, Function}
-    creation_times::Dict{String, DateTime}
+    active_resources::Dict{String,Any}
+    cleanup_functions::Dict{String,Function}
+    creation_times::Dict{String,DateTime}
 
     ResourceTracker() = new(Dict(), Dict(), Dict())
 end
@@ -166,7 +166,7 @@ end
 Lê arquivo com cleanup automático
 """
 function safe_file_read(filepath::String)
-    @with_cleanup file=open(filepath, "r") close(file) begin
+    @with_cleanup file = open(filepath, "r") close(file) begin
         return read(file, String)
     end
 end
@@ -177,7 +177,7 @@ end
 Escreve arquivo com cleanup automático
 """
 function safe_file_write(filepath::String, content::String)
-    @with_cleanup file=open(filepath, "w") close(file) begin
+    @with_cleanup file = open(filepath, "w") close(file) begin
         write(file, content)
     end
 end
@@ -191,7 +191,7 @@ end
 
 Executa operação monitorando uso de memória
 """
-function memory_safe_operation(operation::Function, max_memory_mb::Int = 500)
+function memory_safe_operation(operation::Function, max_memory_mb::Int=500)
     initial_memory = Base.gc_live_bytes()
 
     try
@@ -202,13 +202,13 @@ function memory_safe_operation(operation::Function, max_memory_mb::Int = 500)
 
         if memory_used_mb > max_memory_mb
             @warn "Alto uso de memória detectado: $(round(memory_used_mb, digits=1))MB"
-            GC.gc()  # Força garbage collection
+            # Substituir GC forçado por sugestão de otimização
+            @info "Considere otimizar o uso de memória na operação"
         end
 
         return result
     finally
-        # Cleanup final
-        GC.gc()
+        # Remover GC forçado para melhorar performance
     end
 end
 
@@ -227,7 +227,7 @@ mutable struct ResourcePool{T}
     create_fn::Function
     reset_fn::Function
 
-    function ResourcePool{T}(create_fn::Function, reset_fn::Function = identity) where {T}
+    function ResourcePool{T}(create_fn::Function, reset_fn::Function=identity) where {T}
         new{T}(T[], Set{T}(), create_fn, reset_fn)
     end
 end

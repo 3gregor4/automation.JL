@@ -129,7 +129,8 @@ function enhanced_green_code_showcase()
         MemoryOptimization.release_scalable!(scalable_pool, arr)
     end
 
-    GC.gc()
+    # Remover garbage collection forçado para melhorar performance
+    @debug "Medindo memória final"
     final_memory = Base.gc_live_bytes()
     memory_growth = final_memory - initial_memory
 
