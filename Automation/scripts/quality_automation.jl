@@ -99,7 +99,7 @@ function validate_infrastructure()
 
     # 2. Verificar targets do Makefile
     println("\n📋 Checking Makefile targets...")
-    makefile_content = isfile("Makefile") ? read("Makefile", String) : ""
+    makefile_content = isfile("Makefile") ? Automation.safe_file_read("Makefile") : ""
 
     required_targets = [
         "format" => "Code formatting",

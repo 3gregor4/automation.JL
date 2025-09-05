@@ -391,17 +391,19 @@ Configurações otimizadas de GC para diferentes workloads
 function gc_optimization_settings(workload_type::Symbol=:balanced)
     if workload_type == :memory_intensive
         # Para workloads que usam muita memória
-        GC.gc(true)  # Full GC
+        # Remover GC forçado para melhorar performance
+        # GC.gc(true)  # Full GC
         # Sugestão: aumentar GC threshold
         @printf "GC optimized for memory-intensive workload\n"
     elseif workload_type == :cpu_intensive
         # Para workloads que usam muito CPU
-        GC.enable_finalizers(false)  # Disable durante processamento crítico
+        # GC.enable_finalizers(false)  # Disable durante processamento crítico
         @printf "GC optimized for CPU-intensive workload\n"
         @printf "Remember to re-enable finalizers with GC.enable_finalizers(true)\n"
     elseif workload_type == :real_time
         # Para aplicações real-time
-        GC.gc(false)  # Incremental GC apenas
+        # Remover GC forçado para melhorar performance
+        # GC.gc(false)  # Incremental GC apenas
         @printf "GC optimized for real-time workload\n"
     else
         # Configuração balanceada

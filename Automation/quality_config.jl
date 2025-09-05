@@ -332,7 +332,7 @@ function configure_quality_automation(project_path::String = ".")
         # 3. Verificar Makefile targets
         makefile_path = joinpath(project_path, "Makefile")
         if isfile(makefile_path)
-            makefile_content = read(makefile_path, String)
+            makefile_content = Automation.safe_file_read(makefile_path)
             required_targets = ["format", "format-check", "quality-report", "style-check"]
 
             for target in required_targets

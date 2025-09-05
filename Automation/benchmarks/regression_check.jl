@@ -25,7 +25,7 @@ function establish_baseline()
     # I/O operations baseline
     result3 = @benchmark begin
         if isfile("Project.toml")
-            length(read("Project.toml", String))
+            length(Automation.safe_file_read("Project.toml"))
         else
             0
         end

@@ -136,7 +136,7 @@ function collect_code_metrics(project_path::String)
 
     for file in julia_files
         try
-            content = read(file, String)
+            content = Automation.safe_file_read(file)
             lines = split(content, '\n')
 
             # Métricas básicas
@@ -204,7 +204,7 @@ function collect_quality_issues(project_path::String)
 
     for file in julia_files
         try
-            content = read(file, String)
+            content = Automation.safe_file_read(file)
             lines = split(content, '\n')
 
             # Analisar cada tipo de questão

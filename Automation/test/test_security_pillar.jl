@@ -90,13 +90,9 @@ using JSON3
         end
 
         @testset "Security Package Score Calculation" begin
-            # Usar o diretório do projeto principal (um nível acima do diretório test)
-            current_dir = pwd()
-            project_path = current_dir
-            # Se estivermos no diretório test, subir um nível
-            if basename(current_dir) == "test"
-                project_path = dirname(current_dir)
-            end
+            # Usar a função unificada para resolver o caminho do projeto
+            project_path = Automation.resolve_project_path(pwd())
+            println("   📁 Caminho do projeto: $project_path")
 
             score = Automation.CSGAScoring.evaluate_package_security(project_path)
             @test score >= 80.0
@@ -123,13 +119,9 @@ using JSON3
                 r"ccall\s*\(",
             ]
 
-            # Usar o diretório do projeto principal (um nível acima do diretório test)
-            current_dir = pwd()
-            project_path = current_dir
-            # Se estivermos no diretório test, subir um nível
-            if basename(current_dir) == "test"
-                project_path = dirname(current_dir)
-            end
+            # Usar a função unificada para resolver o caminho do projeto
+            project_path = Automation.resolve_project_path(pwd())
+            println("   📁 Caminho do projeto: $project_path")
 
             julia_files = []
             for (root, dirs, files) in walkdir(project_path)
@@ -148,7 +140,7 @@ using JSON3
             for file_path in julia_files
                 if isfile(file_path)
                     try
-                        content = read(file_path, String)
+                        content = Automation.safe_file_read(file_path)
                         lines = split(content, '\n')
                         total_lines += length(lines)
 
@@ -167,7 +159,12 @@ using JSON3
                 end
             end
 
-            violation_rate = total_lines > 0 ? violation_count / total_lines : 0.0
+            # Proteção contra divisão por zero
+            violation_rate = if total_lines > 0
+                violation_count / total_lines
+            else
+                0.0
+            end
             @test violation_rate <= 0.001
 
             println("   ℹ️  Linhas analisadas: $total_lines")
@@ -175,13 +172,9 @@ using JSON3
         end
 
         @testset "Code Security Score Calculation" begin
-            # Usar o diretório do projeto principal (um nível acima do diretório test)
-            current_dir = pwd()
-            project_path = current_dir
-            # Se estivermos no diretório test, subir um nível
-            if basename(current_dir) == "test"
-                project_path = dirname(current_dir)
-            end
+            # Usar a função unificada para resolver o caminho do projeto
+            project_path = Automation.resolve_project_path(pwd())
+            println("   📁 Caminho do projeto: $project_path")
 
             score = Automation.CSGAScoring.evaluate_code_security(project_path)
             @test score >= 70.0
@@ -196,13 +189,9 @@ using JSON3
     # ==========================================================================
     @testset "📋 Dependency Management Score" begin
         @testset "Project Structure Validation" begin
-            # Usar o diretório do projeto principal (um nível acima do diretório test)
-            current_dir = pwd()
-            project_path = current_dir
-            # Se estivermos no diretório test, subir um nível
-            if basename(current_dir) == "test"
-                project_path = dirname(current_dir)
-            end
+            # Usar a função unificada para resolver o caminho do projeto
+            project_path = Automation.resolve_project_path(pwd())
+            println("   📁 Caminho do projeto: $project_path")
 
             @test isfile(joinpath(project_path, "Project.toml"))
             @test isfile(joinpath(project_path, "Manifest.toml"))
@@ -217,13 +206,9 @@ using JSON3
         end
 
         @testset "Dependency Management Score Calculation" begin
-            # Usar o diretório do projeto principal (um nível acima do diretório test)
-            current_dir = pwd()
-            project_path = current_dir
-            # Se estivermos no diretório test, subir um nível
-            if basename(current_dir) == "test"
-                project_path = dirname(current_dir)
-            end
+            # Usar a função unificada para resolver o caminho do projeto
+            project_path = Automation.resolve_project_path(pwd())
+            println("   📁 Caminho do projeto: $project_path")
 
             score = Automation.CSGAScoring.evaluate_dependency_management(project_path)
             @test score >= 75.0
@@ -238,17 +223,13 @@ using JSON3
     # ==========================================================================
     @testset "🤖 Security Automation Score" begin
         @testset "Makefile Security Targets" begin
-            # Usar o diretório do projeto principal (um nível acima do diretório test)
-            current_dir = pwd()
-            project_path = current_dir
-            # Se estivermos no diretório test, subir um nível
-            if basename(current_dir) == "test"
-                project_path = dirname(current_dir)
-            end
+            # Usar a função unificada para resolver o caminho do projeto
+            project_path = Automation.resolve_project_path(pwd())
+            println("   📁 Caminho do projeto: $project_path")
 
             makefile_path = joinpath(project_path, "Makefile")
             if isfile(makefile_path)
-                makefile_content = read(makefile_path, String)
+                makefile_content = Automation.safe_file_read(makefile_path)
 
                 # Targets de segurança esperados
                 security_targets = ["csga", "validate"]
@@ -266,7 +247,13 @@ using JSON3
                     end
                 end
 
-                target_coverage = found_targets / length(security_targets)
+                # Proteção contra divisão por zero
+                security_targets_count = length(security_targets)
+                target_coverage = if security_targets_count > 0
+                    found_targets / security_targets_count
+                else
+                    0.0
+                end
                 @test target_coverage >= 0.5
 
                 println("   📊 Coverage de targets de segurança: $(round(target_coverage*100, digits=1))%")
@@ -274,13 +261,9 @@ using JSON3
         end
 
         @testset "Security Automation Score Calculation" begin
-            # Usar o diretório do projeto principal (um nível acima do diretório test)
-            current_dir = pwd()
-            project_path = current_dir
-            # Se estivermos no diretório test, subir um nível
-            if basename(current_dir) == "test"
-                project_path = dirname(current_dir)
-            end
+            # Usar a função unificada para resolver o caminho do projeto
+            project_path = Automation.resolve_project_path(pwd())
+            println("   📁 Caminho do projeto: $project_path")
 
             score = Automation.CSGAScoring.evaluate_security_automation(project_path)
             @test score >= 80.0

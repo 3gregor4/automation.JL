@@ -61,13 +61,9 @@ using Statistics
         end
 
         @testset "Documentation Structure" begin
-            # Usar o diretório do projeto principal (um nível acima do diretório test)
-            current_dir = pwd()
-            project_path = current_dir
-            # Se estivermos no diretório test, subir um nível
-            if basename(current_dir) == "test"
-                project_path = dirname(current_dir)
-            end
+            # Usar a função unificada para resolver o caminho do projeto
+            project_path = Automation.resolve_project_path(pwd())
+            println("   📁 Caminho do projeto: $project_path")
 
             docs_dir = joinpath(project_path, "docs")
             if isdir(docs_dir)
@@ -83,13 +79,9 @@ using Statistics
         end
 
         @testset "Code Organization Score Calculation" begin
-            # Usar o diretório do projeto principal (um nível acima do diretório test)
-            current_dir = pwd()
-            project_path = current_dir
-            # Se estivermos no diretório test, subir um nível
-            if basename(current_dir) == "test"
-                project_path = dirname(current_dir)
-            end
+            # Usar a função unificada para resolver o caminho do projeto
+            project_path = Automation.resolve_project_path(pwd())
+            println("   📁 Caminho do projeto: $project_path")
 
             score = Automation.CSGAScoring.evaluate_code_organization(project_path)
             @test score >= 70.0
@@ -104,19 +96,15 @@ using Statistics
     # ==========================================================================
     @testset "📚 Documentation Quality Score" begin
         @testset "README.md Quality" begin
-            # Usar o diretório do projeto principal (um nível acima do diretório test)
-            current_dir = pwd()
-            project_path = current_dir
-            # Se estivermos no diretório test, subir um nível
-            if basename(current_dir) == "test"
-                project_path = dirname(current_dir)
-            end
+            # Usar a função unificada para resolver o caminho do projeto
+            project_path = Automation.resolve_project_path(pwd())
+            println("   📁 Caminho do projeto: $project_path")
 
             readme_file = joinpath(project_path, "README.md")
             @test isfile(readme_file) == true
 
             if isfile(readme_file)
-                readme_content = read(readme_file, String)
+                readme_content = Automation.safe_file_read(readme_file)
                 readme_lines = split(readme_content, '\n')
 
                 @test length(readme_lines) >= 10
@@ -136,13 +124,9 @@ using Statistics
         end
 
         @testset "Code Documentation (Docstrings)" begin
-            # Usar o diretório do projeto principal (um nível acima do diretório test)
-            current_dir = pwd()
-            project_path = current_dir
-            # Se estivermos no diretório test, subir um nível
-            if basename(current_dir) == "test"
-                project_path = dirname(current_dir)
-            end
+            # Usar a função unificada para resolver o caminho do projeto
+            project_path = Automation.resolve_project_path(pwd())
+            println("   📁 Caminho do projeto: $project_path")
 
             julia_files = []
             for (root, dirs, files) in walkdir(joinpath(project_path, "src"))
@@ -159,7 +143,7 @@ using Statistics
             for file_path in julia_files
                 if isfile(file_path)
                     try
-                        content = read(file_path, String)
+                        content = Automation.safe_file_read(file_path)
                         lines = split(content, '\n')
 
                         # Procurar por definições de função
@@ -182,6 +166,7 @@ using Statistics
                 end
             end
 
+            # Proteção contra divisão por zero
             if total_functions > 0
                 documentation_ratio = documented_functions / total_functions
                 @test documentation_ratio >= 0.6
@@ -194,17 +179,13 @@ using Statistics
         end
 
         @testset "AGENTS.md Documentation" begin
-            # Usar o diretório do projeto principal (um nível acima do diretório test)
-            current_dir = pwd()
-            project_path = current_dir
-            # Se estivermos no diretório test, subir um nível
-            if basename(current_dir) == "test"
-                project_path = dirname(current_dir)
-            end
+            # Usar a função unificada para resolver o caminho do projeto
+            project_path = Automation.resolve_project_path(pwd())
+            println("   📁 Caminho do projeto: $project_path")
 
             agents_file = joinpath(project_path, "AGENTS.md")
             if isfile(agents_file)
-                agents_content = read(agents_file, String)
+                agents_content = Automation.safe_file_read(agents_file)
                 agents_lines = split(agents_content, '\n')
 
                 @test length(agents_lines) >= 50
@@ -227,13 +208,9 @@ using Statistics
         end
 
         @testset "Documentation Quality Score Calculation" begin
-            # Usar o diretório do projeto principal (um nível acima do diretório test)
-            current_dir = pwd()
-            project_path = current_dir
-            # Se estivermos no diretório test, subir um nível
-            if basename(current_dir) == "test"
-                project_path = dirname(current_dir)
-            end
+            # Usar a função unificada para resolver o caminho do projeto
+            project_path = Automation.resolve_project_path(pwd())
+            println("   📁 Caminho do projeto: $project_path")
 
             score = Automation.CSGAScoring.evaluate_documentation_quality(project_path)
             @test score >= 60.0
@@ -248,13 +225,9 @@ using Statistics
     # ==========================================================================
     @testset "🎨 Code Style Score" begin
         @testset "Julia Style Guidelines" begin
-            # Usar o diretório do projeto principal (um nível acima do diretório test)
-            current_dir = pwd()
-            project_path = current_dir
-            # Se estivermos no diretório test, subir um nível
-            if basename(current_dir) == "test"
-                project_path = dirname(current_dir)
-            end
+            # Usar a função unificada para resolver o caminho do projeto
+            project_path = Automation.resolve_project_path(pwd())
+            println("   📁 Caminho do projeto: $project_path")
 
             julia_files = []
             for (root, dirs, files) in walkdir(joinpath(project_path, "src"))
@@ -283,7 +256,7 @@ using Statistics
             for file_path in julia_files
                 if isfile(file_path)
                     try
-                        content = read(file_path, String)
+                        content = Automation.safe_file_read(file_path)
                         lines = split(content, '\n')
                         total_lines += length(lines)
 
@@ -357,7 +330,7 @@ using Statistics
             for file_path in julia_files
                 if isfile(file_path)
                     try
-                        content = read(file_path, String)
+                        content = Automation.safe_file_read(file_path)
                         lines = split(content, '\n')
                         total_lines_of_code += length(filter(!isempty, lines))
 

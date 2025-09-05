@@ -63,7 +63,7 @@ function analyze_file(file_path::String)
         throw(ArgumentError("Arquivo inválido: $file_path"))
     end
 
-    content = read(file_path, String)
+    content = Automation.safe_file_read(file_path)
     lines = split(content, '\n')
 
     # Métricas básicas

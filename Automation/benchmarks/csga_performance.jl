@@ -80,7 +80,7 @@ function benchmark_security_pillar()
             # Simular análise de pacotes
             project_file = "Project.toml"
             if isfile(project_file)
-                content = read(project_file, String)
+                content = Automation.safe_file_read(project_file)
                 lines = split(content, '\n')
                 deps_count = count(l -> contains(l, "="), lines)
             else
@@ -128,7 +128,7 @@ function benchmark_clean_code_pillar()
             total_lines = 0
             for file in julia_files
                 try
-                    content = read(joinpath("src", file), String)
+                    content = Automation.safe_file_read(joinpath("src", file))
                     total_lines += length(split(content, '\n'))
                 catch
                     # Ignorar erros
@@ -173,7 +173,7 @@ function benchmark_green_code_pillar()
                 for file in readdir("src")
                     if endswith(file, ".jl")
                         try
-                            content = read(joinpath("src", file), String)
+                            content = Automation.safe_file_read(joinpath("src", file))
                             for pattern in good_patterns
                                 patterns_found += count(pattern, content)
                             end
@@ -216,7 +216,7 @@ function benchmark_automation_pillar()
 
             # Verificar Makefile
             if isfile("Makefile")
-                makefile_content = read("Makefile", String)
+                makefile_content = Automation.safe_file_read("Makefile")
                 targets = ["test", "dev", "clean", "format"]
 
                 for target in targets

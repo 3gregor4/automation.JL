@@ -9,8 +9,8 @@ using Statistics
 function profile_memory_usage()
     println("🧠 Memory Profiling...")
 
-    # Force GC
-    GC.gc()
+    # Remover GC forçado para melhorar performance
+    # GC.gc()
     initial_memory = Base.gc_live_bytes()
 
     # Test memory allocation patterns

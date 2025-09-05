@@ -69,7 +69,7 @@ function evaluate_cicd_infrastructure(project_path::String)::Float64
     makefile_path = joinpath(project_path, "Makefile")
     if isfile(makefile_path)
         try
-            makefile_content = read(makefile_path, String)
+            makefile_content = Automation.safe_file_read(makefile_path)
             essential_targets = ["test", "dev", "pluto", "clean", "format"]  # Conforme memória
 
             for target in essential_targets
@@ -132,7 +132,7 @@ function evaluate_testing_automation(project_path::String)::Float64
     makefile_path = joinpath(project_path, "Makefile")
     if isfile(makefile_path)
         try
-            makefile_content = read(makefile_path, String)
+            makefile_content = Automation.safe_file_read(makefile_path)
             if occursin(r"^test:"m, makefile_content)
                 score += 25.0
             end
@@ -151,7 +151,7 @@ function evaluate_quality_automation(project_path::String)::Float64
     makefile_path = joinpath(project_path, "Makefile")
     if isfile(makefile_path)
         try
-            makefile_content = read(makefile_path, String)
+            makefile_content = Automation.safe_file_read(makefile_path)
             if occursin(r"^format:", makefile_content)
                 score += 25.0
             end
@@ -200,7 +200,7 @@ function evaluate_agents_integration(project_path::String)::Float64
     agents_file = joinpath(project_path, "AGENTS.md")
     if isfile(agents_file)
         try
-            agents_content = read(agents_file, String)
+            agents_content = Automation.safe_file_read(agents_file)
 
             # Verifica seções essenciais
             required_sections = ["Security", "Clean Code", "Green Code", "Automation"]
@@ -221,7 +221,7 @@ function evaluate_agents_integration(project_path::String)::Float64
     # Comandos executáveis no AGENTS.md (40 pontos)
     if isfile(agents_file)
         try
-            agents_content = read(agents_file, String)
+            agents_content = Automation.safe_file_read(agents_file)
 
             # Verifica presença de comandos make
             make_commands = ["make test", "make format", "make clean", "make dev"]

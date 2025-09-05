@@ -288,11 +288,21 @@ function evaluate_package_security(project_path::String)::Float64
         end
 
         official_count = count(pkg -> pkg in official_packages, keys(deps))
-        official_ratio = official_count / length(deps)
+        # Proteção contra divisão por zero
+        deps_count = length(deps)
+        official_ratio = if deps_count > 0
+            official_count / deps_count
+        else
+            0.0
+        end
 
         # Bonificação por compatibilidade versionada
         compat = get(project_data, "compat", Dict())
-        compat_bonus = min(20.0, (length(compat) / length(deps)) * 20.0)
+        compat_bonus = if deps_count > 0
+            min(20.0, (length(compat) / deps_count) * 20.0)
+        else
+            20.0  # Máximo bônus se não houver dependências
+        end
 
         base_score = official_ratio * 80.0
         return min(100.0, base_score + compat_bonus)
@@ -407,9 +417,13 @@ function evaluate_dependency_management(project_path::String)::Float64
 
             # Metadados completos (25 pontos)
             metadata_fields = ["name", "uuid", "authors", "version"]
-            metadata_score =
+            metadata_fields_count = length(metadata_fields)
+            metadata_score = if metadata_fields_count > 0
                 count(field -> haskey(project_data, field), metadata_fields) /
-                length(metadata_fields)
+                metadata_fields_count
+            else
+                0.0
+            end
             score += metadata_score * 25.0
 
         catch e
@@ -432,7 +446,7 @@ function evaluate_security_automation(project_path::String)::Float64
     makefile_path = joinpath(project_path, "Makefile")
     if isfile(makefile_path)
         try
-            makefile_content = read(makefile_path, String)
+            makefile_content = Automation.safe_file_read(makefile_path)
             security_targets = ["audit", "security", "scan"]
 
             for target in security_targets
@@ -449,7 +463,7 @@ function evaluate_security_automation(project_path::String)::Float64
     agents_file = joinpath(project_path, "AGENTS.md")
     if isfile(agents_file)
         try
-            agents_content = read(agents_file, String)
+            agents_content = Automation.safe_file_read(agents_file)
             if occursin("Security", agents_content) && occursin("audit", agents_content)
                 score += 25.0
             end

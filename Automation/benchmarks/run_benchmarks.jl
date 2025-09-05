@@ -23,9 +23,10 @@ BenchmarkTools.DEFAULT_PARAMETERS.seconds = 5
 Configura ambiente otimizado para benchmarks consistentes
 """
 function setup_benchmark_environment()
+    # Remover garbage collection forçado para melhorar performance
     # Forçar garbage collection antes de iniciar
-    GC.gc()
-    GC.gc()
+    # GC.gc()
+    # GC.gc()
 
     # Configurar parâmetros de benchmark
     println("🔧 Configurando ambiente de benchmark...")
@@ -112,7 +113,7 @@ function create_core_benchmarks()
     # Benchmark de I/O - leitura de arquivo Project.toml
     add_benchmark!(suite, "file_io", () -> begin
         if isfile("Project.toml")
-            read("Project.toml", String)
+            Automation.safe_file_read("Project.toml")
         else
             "mock content"
         end

@@ -31,7 +31,7 @@ using Automation
             @test isfile(makefile_path) == true
 
             if isfile(makefile_path)
-                makefile_content = read(makefile_path, String)
+                makefile_content = Automation.safe_file_read(makefile_path)
 
                 # Targets essenciais para CI/CD
                 essential_targets =
@@ -69,7 +69,7 @@ using Automation
             @test isfile(agents_file) == true
 
             if isfile(agents_file)
-                agents_content = read(agents_file, String)
+                agents_content = Automation.safe_file_read(agents_file)
 
                 # Verificar comandos executáveis
                 executable_patterns = [
@@ -208,7 +208,7 @@ using Automation
             for file_path in test_files
                 if isfile(file_path)
                     try
-                        content = read(file_path, String)
+                        content = Automation.safe_file_read(file_path)
 
                         # Contar @testset
                         testset_matches = collect(eachmatch(r"@testset\s+", content))
@@ -295,7 +295,7 @@ using Automation
             # Makefile test target
             makefile_path = joinpath(project_path, "Makefile")
             if isfile(makefile_path)
-                makefile_content = read(makefile_path, String)
+                makefile_content = Automation.safe_file_read(makefile_path)
                 lines = split(makefile_content, "\n")
 
                 # Verificar target 'test'
@@ -313,7 +313,7 @@ using Automation
 
             # CSGA validation target
             if isfile(makefile_path)
-                makefile_content = read(makefile_path, String)
+                makefile_content = Automation.safe_file_read(makefile_path)
                 lines = split(makefile_content, "\n")
 
                 # Verificar target 'csga'
@@ -399,7 +399,7 @@ using Automation
             # Verificar targets de instalação
             makefile_path = joinpath(project_path, "Makefile")
             if isfile(makefile_path)
-                makefile_content = read(makefile_path, String)
+                makefile_content = Automation.safe_file_read(makefile_path)
                 lines = split(makefile_content, "\n")
 
                 # Verificar target 'install'
@@ -430,20 +430,16 @@ using Automation
         @testset "Benchmark Automation" begin
             # Verificar automação de benchmarks
 
-            # Determinar o caminho correto do projeto
-            current_dir = pwd()
-            project_path = current_dir
-            # Se estivermos no diretório test, subir um nível
-            if basename(current_dir) == "test"
-                project_path = dirname(current_dir)
-            end
+            # Usar a função unificada para resolver o caminho do projeto
+            project_path = Automation.resolve_project_path(pwd())
+            println("   📁 Caminho do projeto: $project_path")
 
             @test isdir(joinpath(project_path, "benchmarks")) == true
             @test isfile(joinpath(project_path, "benchmarks/run_benchmarks.jl")) == true
 
             makefile_path = joinpath(project_path, "Makefile")
             if isfile(makefile_path)
-                makefile_content = read(makefile_path, String)
+                makefile_content = Automation.safe_file_read(makefile_path)
                 lines = split(makefile_content, "\n")
 
                 # Verificar target 'bench'
@@ -464,19 +460,15 @@ using Automation
         @testset "Documentation Automation" begin
             # Verificar automação de documentação
 
-            # Determinar o caminho correto do projeto
-            current_dir = pwd()
-            project_path = current_dir
-            # Se estivermos no diretório test, subir um nível
-            if basename(current_dir) == "test"
-                project_path = dirname(current_dir)
-            end
+            # Usar a função unificada para resolver o caminho do projeto
+            project_path = Automation.resolve_project_path(pwd())
+            println("   📁 Caminho do projeto: $project_path")
 
             @test isdir(joinpath(project_path, "docs")) == true
 
             makefile_path = joinpath(project_path, "Makefile")
             if isfile(makefile_path)
-                makefile_content = read(makefile_path, String)
+                makefile_content = Automation.safe_file_read(makefile_path)
                 # Verificar cada linha separadamente
                 lines = split(makefile_content, "\n")
                 found_docs = false
@@ -493,13 +485,9 @@ using Automation
         end
 
         @testset "Build Automation Score Calculation" begin
-            # Determinar o caminho correto do projeto
-            current_dir = pwd()
-            project_path = current_dir
-            # Se estivermos no diretório test, subir um nível
-            if basename(current_dir) == "test"
-                project_path = dirname(current_dir)
-            end
+            # Usar a função unificada para resolver o caminho do projeto
+            project_path = Automation.resolve_project_path(pwd())
+            println("   📁 Caminho do projeto: $project_path")
 
             score = Automation.CSGAScoring.evaluate_build_automation(project_path)
             @test score >= 70.0
@@ -516,22 +504,18 @@ using Automation
         @testset "Developer Experience" begin
             # Verificar ferramentas para experiência do desenvolvedor
 
-            # Determinar o caminho correto do projeto
-            current_dir = pwd()
-            project_path = current_dir
-            # Se estivermos no diretório test, subir um nível
-            if basename(current_dir) == "test"
-                project_path = dirname(current_dir)
-            end
+            # Usar a função unificada para resolver o caminho do projeto
+            project_path = Automation.resolve_project_path(pwd())
+            println("   📁 Caminho do projeto: $project_path")
 
             # Verificar Revise.jl para desenvolvimento interativo
-            project_content = read(joinpath(project_path, "Project.toml"), String)
+            project_content = Automation.safe_file_read(joinpath(project_path, "Project.toml"))
             @test occursin("Revise", project_content) == true
 
             # Verificar targets de desenvolvimento
             makefile_path = joinpath(project_path, "Makefile")
             if isfile(makefile_path)
-                makefile_content = read(makefile_path, String)
+                makefile_content = Automation.safe_file_read(makefile_path)
 
                 dev_targets = ["dev", "format", "clean"]
                 found_dev_targets = 0
@@ -542,7 +526,13 @@ using Automation
                     end
                 end
 
-                dev_coverage = found_dev_targets / length(dev_targets)
+                # Proteção contra divisão por zero
+                dev_targets_count = length(dev_targets)
+                dev_coverage = if dev_targets_count > 0
+                    found_dev_targets / dev_targets_count
+                else
+                    0.0
+                end
                 @test dev_coverage >= 0.6
 
                 println(
@@ -554,38 +544,30 @@ using Automation
         @testset "Code Quality Tools" begin
             # Verificar ferramentas de qualidade de código
 
-            # Determinar o caminho correto do projeto
-            current_dir = pwd()
-            project_path = current_dir
-            # Se estivermos no diretório test, subir um nível
-            if basename(current_dir) == "test"
-                project_path = dirname(current_dir)
-            end
+            # Usar a função unificada para resolver o caminho do projeto
+            project_path = Automation.resolve_project_path(pwd())
+            println("   📁 Caminho do projeto: $project_path")
 
             # JuliaFormatter para formatação automática
             makefile_path = joinpath(project_path, "Makefile")
             if isfile(makefile_path)
-                makefile_content = read(makefile_path, String)
+                makefile_content = Automation.safe_file_read(makefile_path)
                 if occursin("format", makefile_content)
                     println("   ✅ Formatação automática configurada")
                 end
             end
 
             # Debugger.jl para debugging
-            project_content = read(joinpath(project_path, "Project.toml"), String)
+            project_content = Automation.safe_file_read(joinpath(project_path, "Project.toml"))
             if occursin("Debugger", project_content)
                 println("   ✅ Debugger.jl configurado")
             end
         end
 
         @testset "Development Workflow Score Calculation" begin
-            # Determinar o caminho correto do projeto
-            current_dir = pwd()
-            project_path = current_dir
-            # Se estivermos no diretório test, subir um nível
-            if basename(current_dir) == "test"
-                project_path = dirname(current_dir)
-            end
+            # Usar a função unificada para resolver o caminho do projeto
+            project_path = Automation.resolve_project_path(pwd())
+            println("   📁 Caminho do projeto: $project_path")
 
             score = Automation.CSGAScoring.evaluate_development_workflow(project_path)
             @test score >= 60.0

@@ -80,13 +80,9 @@ using Statistics
         end
 
         @testset "Code Efficiency Score Calculation" begin
-            # Usar o diretório do projeto principal (um nível acima do diretório test)
-            current_dir = pwd()
-            project_path = current_dir
-            # Se estivermos no diretório test, subir um nível
-            if basename(current_dir) == "test"
-                project_path = dirname(current_dir)
-            end
+            # Usar a função unificada para resolver o caminho do projeto
+            project_path = Automation.resolve_project_path(pwd())
+            println("   📁 Caminho do projeto: $project_path")
 
             score = Automation.CSGAScoring.evaluate_code_efficiency(project_path)
             @test score >= 60.0
@@ -138,13 +134,9 @@ using Statistics
         end
 
         @testset "Resource Management Score Calculation" begin
-            # Usar o diretório do projeto principal (um nível acima do diretório test)
-            current_dir = pwd()
-            project_path = current_dir
-            # Se estivermos no diretório test, subir um nível
-            if basename(current_dir) == "test"
-                project_path = dirname(current_dir)
-            end
+            # Usar a função unificada para resolver o caminho do projeto
+            project_path = Automation.resolve_project_path(pwd())
+            println("   📁 Caminho do projeto: $project_path")
 
             score = Automation.CSGAScoring.evaluate_resource_management(project_path)
             @test score >= 65.0
@@ -160,13 +152,9 @@ using Statistics
     @testset "🎯 Green Code Pillar Integration Test" begin
 
         # Avaliação completa do pilar
-        # Usar o diretório do projeto principal (um nível acima do diretório test)
-        current_dir = pwd()
-        project_path = current_dir
-        # Se estivermos no diretório test, subir um nível
-        if basename(current_dir) == "test"
-            project_path = dirname(current_dir)
-        end
+        # Usar a função unificada para resolver o caminho do projeto
+        project_path = Automation.resolve_project_path(pwd())
+        println("   📁 Caminho do projeto: $project_path")
 
         green_code_pillar = Automation.CSGAScoring.evaluate_green_code_pillar(project_path)
 

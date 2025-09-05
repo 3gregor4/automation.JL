@@ -28,7 +28,7 @@ function benchmark_julia_core()
     # File I/O
     result3 = @benchmark begin
         if isfile("Project.toml")
-            content = read("Project.toml", String)
+            content = Automation.safe_file_read("Project.toml")
             length(split(content, '\n'))
         else
             0

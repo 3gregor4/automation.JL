@@ -134,13 +134,15 @@ function run_quality_analyzer_benchmarks()
         test_file = test_files[1]
 
         # Medição detalhada de memória
-        GC.gc()  # Cleanup inicial
+        # Remover GC forçado para melhorar performance
+        # GC.gc()  # Cleanup inicial
         memory_before = Base.gc_live_bytes()
 
         # Execução com tracking de memória
         result = @timed analyze_file_optimized(test_file)
 
-        GC.gc()  # Cleanup após execução
+        # Remover GC forçado para melhorar performance
+        # GC.gc()  # Cleanup após execução
         memory_after = Base.gc_live_bytes()
 
         # Calcular métricas de memória

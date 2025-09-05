@@ -102,7 +102,7 @@ function validate_code_formatting()
     for file in julia_files
         try
             # Simular verificação de formatação (JuliaFormatter pode não estar disponível)
-            file_content = read(file, String)
+            file_content = Automation.safe_file_read(file)
 
             # Verificações básicas de formatação
             if occursin(r"\t", file_content)  # Tabs instead of spaces

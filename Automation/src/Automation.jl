@@ -53,18 +53,52 @@ function validate_module_loading()
     ]
     
     missing_modules = String[]
+    loaded_modules = String[]
     
-    # Verificar se os arquivos existem
+    # Verificar se os arquivos existem e tentar carregá-los
     for module_file in required_modules
         file_path = joinpath(@__DIR__, module_file)
         if !isfile(file_path)
             push!(missing_modules, module_file)
+            @error "Arquivo de módulo não encontrado: $file_path"
+        else
+            push!(loaded_modules, module_file)
+            @debug "Módulo encontrado: $file_path"
         end
     end
     
     if !isempty(missing_modules)
-        @warn "Módulos ausentes detectados: $(join(missing_modules, ", "))"
+        @error "Módulos ausentes detectados: $(join(missing_modules, ", "))"
         return false
+    end
+    
+    # Verificar se os módulos foram incluídos corretamente
+    included_modules = String[]
+    not_included_modules = String[]
+    
+    for module_file in required_modules
+        # Extrair nome do módulo do arquivo (remover .jl)
+        module_name = replace(module_file, ".jl" => "")
+        # Converter para formato de módulo Julia (PascalCase)
+        if module_name == "csga_scoring"
+            module_symbol = :CSGAScoring
+        else
+            # Capitalizar primeira letra
+            module_symbol = Symbol(uppercasefirst(module_name))
+        end
+        
+        # Verificar se o módulo está disponível
+        if isdefined(Automation, module_symbol)
+            push!(included_modules, module_file)
+            @debug "Módulo $module_file incluído corretamente como $module_symbol"
+        else
+            push!(not_included_modules, module_file)
+            @warn "Módulo $module_file não incluído ou não acessível como $module_symbol"
+        end
+    end
+    
+    if !isempty(not_included_modules)
+        @warn "Módulos não incluídos corretamente: $(join(not_included_modules, ", "))"
     end
     
     # Verificar se as funções principais estão disponíveis
@@ -75,18 +109,24 @@ function validate_module_loading()
     ]
     
     missing_functions = Symbol[]
+    available_functions = Symbol[]
+    
     for func in required_functions
-        if !isdefined(Automation, func)
+        if isdefined(Automation, func)
+            push!(available_functions, func)
+            @debug "Função $func disponível"
+        else
             push!(missing_functions, func)
+            @error "Função $func não disponível"
         end
     end
     
     if !isempty(missing_functions)
-        @warn "Funções ausentes detectadas: $(join(string.(missing_functions), ", "))"
+        @error "Funções ausentes detectadas: $(join(string.(missing_functions), ", "))"
         return false
     end
     
-    @info "Todos os módulos carregados corretamente"
+    @info "Validação concluída: $(length(loaded_modules)) módulos carregados, $(length(available_functions)) funções disponíveis"
     return true
 end
 

@@ -83,7 +83,7 @@ function process_file_efficiently(file_path::String)
             read(io, String)
         end
     else
-        read(file_path, String)
+        Automation.safe_file_read(file_path)
     end
 
     # Single-pass analysis para múltiplas métricas
@@ -198,7 +198,7 @@ end
 Contagem otimizada de code smells (apenas contagem)
 """
 function count_code_smells_optimized(file_path::String)
-    content = read(file_path, String)
+    content = Automation.safe_file_read(file_path)
     lines = String.(split(content, '\n'))
 
     smells_count = 0

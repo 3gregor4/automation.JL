@@ -129,7 +129,8 @@ function evaluate_naming_conventions(project_path::String)::Float64
 
     for file_path in julia_files
         try
-            content = read(file_path, String)
+            # Usar operação segura de leitura de arquivo
+            content = Automation.safe_file_read(file_path)
             lines = split(content, '\n')
 
             for line in lines
@@ -188,7 +189,8 @@ function evaluate_function_quality(project_path::String)::Float64
 
     for file_path in julia_files
         try
-            content = read(file_path, String)
+            # Usar operação segura de leitura de arquivo
+            content = Automation.safe_file_read(file_path)
             lines = split(content, '\n')
 
             in_function = false
@@ -239,7 +241,8 @@ function evaluate_documentation_quality(project_path::String)::Float64
     readme_path = joinpath(project_path, "README.md")
     if isfile(readme_path)
         try
-            readme_content = read(readme_path, String)
+            # Usar operação segura de leitura de arquivo
+            readme_content = Automation.safe_file_read(readme_path)
             if length(readme_content) > 500
                 score += 25.0
             else
@@ -295,7 +298,6 @@ function evaluate_docstring_coverage(project_path::String)::Float64
             end
         end
     catch e
-        return 50.0
     end
 
     if isempty(julia_files)
@@ -307,7 +309,7 @@ function evaluate_docstring_coverage(project_path::String)::Float64
 
     for file_path in julia_files
         try
-            content = read(file_path, String)
+            content = Automation.safe_file_read(file_path)
             lines = split(content, '\n')
 
             for i in 1:length(lines)
@@ -473,7 +475,8 @@ function evaluate_performance_infrastructure(project_path::String)::Float64
     makefile_path = joinpath(project_path, "Makefile")
     if isfile(makefile_path)
         try
-            makefile_content = read(makefile_path, String)
+            # Usar operação segura de leitura de arquivo
+            makefile_content = Automation.safe_file_read(makefile_path)
             if occursin(r"^bench:", makefile_content) ||
                occursin(r"^benchmark:", makefile_content)
                 score += 25.0
@@ -496,7 +499,6 @@ function evaluate_performance_infrastructure(project_path::String)::Float64
             )
             if has_perf_tests
                 score += 25.0
-            end
         catch e
             # Ignorar erro
         end
@@ -580,7 +582,8 @@ function evaluate_code_efficiency(project_path::String)::Float64
 
     for file_path in julia_files
         try
-            content = read(file_path, String)
+            # Usar operação segura de leitura de arquivo
+            content = Automation.safe_file_read(file_path)
             lines = split(content, '\n')
             total_lines += length(lines)
 
@@ -651,7 +654,7 @@ function evaluate_resource_management(project_path::String)::Float64
 
     for file_path in julia_files
         try
-            content = read(file_path, String)
+            content = Automation.safe_file_read(file_path)
 
             # try-finally para cleanup (peso: 25%)
             try_count = length(collect(eachmatch(r"\btry\b", content)))

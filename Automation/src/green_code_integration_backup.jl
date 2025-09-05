@@ -289,7 +289,8 @@ function green_code_showcase()
         MemoryOptimization.release!(pool, arr)
     end
 
-    GC.gc()
+    # Remover GC forçado para melhorar performance
+    # GC.gc()
     final_memory = Base.gc_live_bytes()
     memory_growth = final_memory - initial_memory
 
@@ -448,7 +449,8 @@ function memory_efficiency_demo()
         sum(temp_arrays)
     end
 
-    GC.gc()
+    # Remover GC forçado para melhorar performance
+    # GC.gc()
     post_naive_memory = Base.gc_live_bytes()
     naive_memory_used = post_naive_memory - initial_memory
 
@@ -475,7 +477,8 @@ function memory_efficiency_demo()
 
     optimized_result = total
 
-    GC.gc()
+    # Remover GC forçado para melhorar performance
+    # GC.gc()
     post_opt_memory = Base.gc_live_bytes()
     opt_memory_used = post_opt_memory - initial_opt_memory
 

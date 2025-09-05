@@ -238,7 +238,7 @@ using Automation
             advanced_patterns_found = 0
             for file_path in julia_files
                 if isfile(file_path)
-                    content = read(file_path, String)
+                    content = Automation.safe_file_read(file_path)
                     if occursin("@with_cleanup", content) ||
                        occursin("safe_operation", content) ||
                        occursin("MemoryPool", content) ||

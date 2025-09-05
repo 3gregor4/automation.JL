@@ -249,7 +249,7 @@ function validate_style(project_path::String = ".")
             end
 
             # Verificações adicionais de estilo
-            content = read(file, String)
+            content = Automation.safe_file_read(file)
 
             # Verificar linha muito longa (>100 chars)
             for (i, line) in enumerate(lines)
